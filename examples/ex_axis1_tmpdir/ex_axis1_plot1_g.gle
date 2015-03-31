@@ -1,0 +1,38 @@
+!This GLE document was generated
+!AUTOMATICALLY and should only be modified
+!through the generating source.
+
+size 6 4
+set hei .25 font psh
+
+begin texpreamble
+	\usepackage{palatino}
+	\usepackage{mathpazo}
+end texpreamble
+set texlabels 1 texscale scale
+
+begin graph
+	scale auto
+	data "datplot1_1.dat" d1=c1,c2
+	d1 lstyle 0  color darkblue  lwidth 0.06  msize 0.2 
+	
+	xsubticks off 
+	ysubticks off
+	x2axis off
+	y2axis off
+	title "\tex{The std normal distribution}"
+	xtitle "\tex{$x$}"
+	ytitle "\tex{$\mathcal N(x;0,1)$}"
+	xplaces -5 -2.5 0 2.5 5
+	yaxis ftick 0 dticks .5 nticks 3
+	xnames "-5" "-5/2" "0" "5/2" "5"
+	ynames "0" "50\%" "100\%"
+	
+end graph
+
+
+
+begin key
+	compact pos tr
+	
+end key

@@ -1,0 +1,388 @@
+#!/usr/bin/env python
+# coding=utf-8
+#
+# ----------------------------------------------------------------------------
+# USER: CHANGE THIS ACCORDINGLY
+from os.path import expanduser
+julia_path = '/Applications/Julia-*.app/Contents/Resources/julia/bin/'
+g_gle_path  = expanduser('~')+"/Dropbox/.my_bin/"
+# ----------------------------------------------------------------------------
+#
+# 	Latest working review: Dec 1 2014
+#
+# TODO [March 2014]
+#
+#	SOON
+#	<pin> keep updating "doc" (new markers)
+#
+#	STUB
+#	find and replace stub blocks
+#
+# 	NOT URGENT
+# 	<> verbatim mode explaining what's going on
+#	<> legend position
+#	<> grid (think about better way than GLE xaxis grid (too strong))
+#	<> possibility to include specific m2g commands %!m2g
+#			* example: remove bounding box of legend (a bit more direct)
+#			than wainting for the improbable (and complicated) matlab
+#			http://www.mathworks.com/matlabcentral/newsreader/view_thread/28318
+#			* other example have GLE colors in comment of plot line
+#
+#	<> multiline commands (plot ... \ ... )
+#		>> detect ((.+)\.{3}\s*\n) then read next line
+#			removing ^\s* [>>> multiline.py]
+#	<> additonal plot options?
+#	<> axis ij, axis tight, ...
+# 	<> axis location -> xaxislocation (axis2 in gle)
+#
+# -- HARDER ----------
+# 	<> extract sequences (0:0.1:1) using something like
+#		match(r'\s*(.+)\s*:\s*(.+)\s*:\s*(.+)\s*',left).group(1,2,3)
+#		problem is in generating the sequence (numpy?)
+#		already partly done for gca xtick,ytick
+#	?<> more clever extraction of things in array ([f(a),f(b)]), see s2gf.array_x
+#			prob requires using matlab directly to express the values -> tricky/messy
+#
+# -- COMMENTS --------
+#
+# 	fragile link to g_gle module + matlab
+# 	solved partially with expanduser (uses dropbox)
+#
+##########################################################################
+# Draft doc
+#
+# 	Calling m2g
+#		-dev: 			leaves temp folder
+#		-noplot|-nogle:	does not compile .gle files
+#		-nooct|-noct:	uses matlab
+#
+#	Way it works
+#		reads original (.m) file line by line and write
+#		effective lines in temp .m file
+#		if markers are recognized (*) the line gets written
+#		appropriately in temp matlab file + gle files get
+#		created.
+#		eventually, everything is compiled, pdf are copied,
+#		and the temporary folder is destroyed
+#
+#	Markers
+#		-figure
+#		-plot
+#			>> calls (s2gf.read_plot): rewrite line to
+#				output .dat files that will be considerd
+#				by GLE. Extract options for gle as well
+#		-stem,semilogx/y, loglog
+#			>> see plot
+#		-hold on
+#			>> keep writing in same gle file
+#		-xlabel, ylabel, xlim, ylim, title
+#		-legend
+#	 	-set(gca,...)
+#			>> x/ytick(label) x/yscale x/ylim
+#
+#	Assumption of simplicity
+#		- numbers given in x.y format (not .y)
+#		- interpretation of arguments or elements of array
+#			needed in gle. Eg. array=[0 1 0 1]; axis(array)
+#			or [0 1:2 3] will fail
+#		- one line per translatable instruction
+#			eg. not figure(); plot(..)
+#	 	- x/yscale given => assume going to log (no switching)
+#		- legend in format legend('leg1','leg2',...)
+#			also, as many legends as lstyles in curfig
+# 		- no 3d (who needs 3d?)
+# 		- atm assume uniline (no triple dot (...) ellipsis)
+#
+##########################################################################
+
+# GENERAL MODULES
+from sys import argv, path
+from subprocess import check_call
+from re import search, sub, match
+from shutil import rmtree, copy
+from glob import iglob
+from os.path import splitext, join, isfile
+from numpy import floor
+from time import time
+# OWN MODULES
+import glec
+import s2gf
+
+###########################
+# USER ARGUMENTS ##########
+###########################
+devmode    = False # else-> cleanup temp folders
+no_gleplot = False # does not compile GLE files
+no_octave  = False # uses matlab instead of octave
+no_tex     = False # for quick graph 
+png_out    = False # output in png instead of pdf
+png_resol  = ''
+if len(argv)>2:
+	for arg in argv[2:]:
+		if   bool(match(r'-dev',arg)):
+			devmode = True
+		elif bool(match(r'-noplot|-nogle',arg)):
+			no_gleplot = True
+		elif bool(match(r'-nooct|-noct',arg)):
+			no_octave = True
+		elif bool(match(r'-png',arg)):
+			png_out   = True
+			png_resol = '300' if (len(arg)==4) else arg[4:]
+		elif bool(match(r'-notex|-draft',arg)):
+			no_tex = True
+		else:
+			print 'Ignoring unrecognized arg.: <'+arg+'>'
+
+# = # = # = # = # = # = # = # = # = # = # = # = # = # = # = # = #
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# = # = # = # = # = # = # = # = # = # = # = # = # = # = # = # = #
+
+mname  = argv[1]
+fname  = splitext(mname)[0] # full name with directory
+fname2 = fname.split('/')
+fname2 = fname2[-1] 		# only name of file
+gname  = fname+'.gle'
+
+t_dir = fname + '_tmpdir/'
+m_tmp = t_dir+'mcode_tmp'
+
+figc    = 0  # number of figures
+plotc   = 0  # number of plots for one figure
+figs    = []
+lstyles = [] # list of lstyles in curfig
+flags   = {'holdon':False}
+
+newfig   = lambda figc: glec.gle(t_dir+fname2+'_plot'+str(figc))
+getarg1  = lambda l,re: s2gf.strip_d(s2gf.get_fargs(l,re)[0],'\'')
+
+# create folder
+try:
+	check_call('mkdir -p '+t_dir,shell=True)
+except Exception, e:
+	print e
+
+# markers
+ignored = r'|'.join(['home','clear','close'])
+markers = r'|'.join([ 	
+	'figure',
+	'plot',
+	'hold',
+	r'[xy]lim',
+	r'[xy]label',
+	'title',
+	r'[xy]?axis',
+	'set',
+	'legend',
+	r'semilog[xy]',
+	'loglog',
+	'stem',
+	'include',
+	r'(#j2g:)'])
+
+# == MAIN BLOCK =================
+# create temp matlab file which
+# outputs data file for each plot
+with open(mname,'r') as mf_orig:
+	with open(m_tmp+'.jl','w+') as mf_tmp:
+		# browse matlab lines and build
+		# a stack of lines to process
+		stack = mf_orig.readlines()
+		while stack: # while there are lines to read
+			l = stack.pop(0)
+			# lines to ignore
+			if  s2gf.match_start(ignored,l): continue
+			marker = s2gf.match_start(markers, l)
+			if not marker:
+				mf_tmp.write(l)
+				continue
+			else:
+				marker = marker.group(1)
+			# ---------------------
+			# HOLD ON/OFF somewhere
+			if marker=='hold':
+				hon  = bool(search(r'hold(?!\s*off)',l))
+				if hon:  l=sub(r'hold(?!\s*off)(.*;?\s*)','',l)
+				hoff = bool(search(r'hold(\s+)off',l))
+				if hoff: l=sub(r'hold(\s+)off(\s*;?\s*)','',l)
+				flags['holdon'] = (hon or flags['holdon']) and (not hoff)
+			# -----------
+			# FIGURE LINE
+			elif marker=='figure':
+				figc 		   += 1
+				if figc>1: figs.append(fig)
+				fig,lstyles 	= newfig(figc), []
+				fig.tex         = False if no_tex else True
+				plotc 			= 0
+				flags['holdon'] = False
+				# -> write to temp matlab file
+				mf_tmp.write('#'+l)
+			# ---------
+			# PLOT LINE
+			elif marker in ['plot','semilogx','semilogy','stem','loglog']:
+				# ------------------
+				# <- NEW GLE FIG? ->
+				pre_figc = figc
+				if not plotc:
+					plotc,figc = 1,figc+(not figc)
+				else:
+					plotc = 1+plotc*flags['holdon']
+					figc  = figc+1*(not flags['holdon'])
+				# check if should generate new fig & append previous if any
+				if figc>pre_figc:
+					if figc>1: figs.append(fig)
+					fig, lstyles = newfig(figc), []
+					fig.tex = False if no_tex else True
+				# ------------------
+				# <- PLOT ACTIONS ->
+				# structify: extract code and options
+				plt = s2gf.read_plot(l,t_dir,figc,plotc)
+				# -> write to temp matlab file
+				mf_tmp.write(plt['mcode'])
+				# -> write to temp gle file
+				block = 'data "datplot'+str(figc)+'_'+  \
+						str(plotc)+'.dat" d'+str(plotc)+\
+						'=c1,c2\n'
+				block+= 'd'+str(plotc)+									\
+							' impulses '*bool(match(r'stem',marker))+ 	\
+							plt['lstyle']+								\
+							plt['lwidth']+								\
+							plt['msize']+'\n'
+				fig.plot+=block
+				lstyles.append(plt['lstyle'])
+				if match(r'semilog[xy]?',marker): fig.axopt+=marker[-1]+'axis log\n'
+				elif match(r'loglog',marker): 	  fig.axopt+='xaxis log\nyaxis log\n'
+ 			# -------------------------
+ 			# AXIS LINES (pass in temp)
+ 			# (atm, ignore fontsize)
+ 			elif marker in ['xlabel','ylabel','title']:
+ 				al = getarg1(l,False)
+ 				marker = '' if (marker=='title') else marker[0]
+ 				if no_tex:
+ 					fig.axopt+=marker+'title "%s"\n'%sub(r'\\','/',al)
+ 				else:
+ 					fig.axopt+=marker+'title "\\tex{%s}"\n'%al
+			elif marker in ['xlim','ylim']:
+ 				al  = getarg1(l,False)
+ 				al_ = s2gf.array_x(al)
+ 				fig.axopt+=marker[0]+'axis min '+al_[0]+' max '+al_[1]+'\n'
+ 			elif marker=='axis':
+ 				if match(r'axis\(',l):
+	 				al  = getarg1(l,False)
+	 				al_ = s2gf.array_x(al)
+	 				block = 'xaxis min '+al_[0]+' max '+al_[1]+'\n'
+	 				block+= 'yaxis min '+al_[2]+' max '+al_[3]+'\n'
+	 				fig.axopt+=block
+	 			else:
+	 				# STUB STUB STUB STUB STUB
+	 				# eg: axis ij, axis tight, ...
+	 				pass
+	 				# STUB STUB STUB STUB STUB
+	 		# ---------
+	 		# SET LINES
+			elif marker=='set':
+				# -------------
+				# <- set GCA ->
+				if match(r'set\(gca',l):
+					args = s2gf.get_fargs(l,False)[1:] # False -> leave spaces
+					while args:
+						arg = s2gf.strip_d(args.pop(0).lower(),'\'')
+						if match(r'[xy]tick$',arg):
+							ticks = args.pop(0)
+							#
+							nc = ticks.count(':')
+							if nc==1: # format a:b
+								f,l = match(r'\[?\s*(.+)\s*:\s*(.+)\s*\]?',ticks).group(1,2)
+								num = str(int(floor(float(l)-float(f))+1))
+								fig.axopt+=arg[0]+'axis ftick '+f+' dticks 1 nticks '+num+'\n'
+							elif nc==2: # format a:b:c
+								f,d,l = match(r'\[?\s*(.+)\s*:\s*(.+)\s*:\s*(.+)\s*\]?',ticks).group(1,2,3)
+								num   = str(int(floor((float(l)-float(f))/float(d)+1)))
+								fig.axopt+=arg[0]+'axis ftick '+f+' dticks '+d+' nticks '+num+'\n'
+							else: # a or [a b c]
+								ticks = s2gf.strip_d(ticks,r'\[|\]')
+								ticks = sub(',',' ',ticks)
+								fig.axopt+=arg[0]+'places '+ticks+'\n'
+						elif match(r'[xy]ticklabel$',arg):
+							labels = s2gf.strip_d(args.pop(0),r'\[|\]')
+							labels = sub(r'\'','"',labels)
+							labels = sub(',',' ',labels)
+							fig.axopt+=arg[0]+'names '+labels+'\n'
+						elif match(r'[xy]scale$',arg):
+							scale = args.pop(0)
+							fig.axopt+=arg[0]+'axis log\n'
+						elif match(r'[xy]lim$',arg):
+							al  = args.pop(0)
+			 				al_ = s2gf.array_x(al)
+			 				fig.axopt+=arg[0]+'axis min '+al_[0]+' max '+al_[1]+'\n'
+				# -------------
+				# <- set GCF ->
+				elif match(r'^set\(gcf',l):
+					# STUB STUB STUB STUB STUB
+					pass
+	 		elif match(r'^(#j2g:)',l):
+	 			s = match(r'^(#j2g:)(.+)$',l).group(2)+'\n'
+	 			fig.axopt+=s
+	 		# ------------
+	 		# LEGEND LINES
+			elif marker=='legend':
+				legs = s2gf.get_fargs(l)
+				for leg_i in range(0,len(legs)):
+					fig.legend+=' text "'+s2gf.strip_d(legs[leg_i],'\'')+'"'+lstyles[leg_i]+'\n'
+			# # ---------
+	 		# RUN LINES
+			elif marker=='include':
+				scriptname = s2gf.strip_d(s2gf.get_fargs(l)[0],'\"')
+				print 'Appending script <', scriptname, '>...'
+				with open(scriptname,'r') as script:
+					# prepend the script to stack of lines
+					stack = script.readlines()+stack
+		# if figure remains -> append it
+		if figc>len(figs): figs.append(fig)
+		mf_tmp.write('\nexit()\n')
+
+# = # = # = # = # = # = # = # = # = # = # = # = # = # = # = # = #
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# = # = # = # = # = # = # = # = # = # = # = # = # = # = # = # = #
+
+###########################
+# COMPILATION #############
+###########################
+# Short side functions
+def copy_xt(ext):
+	global t_dir
+	files = iglob(join(t_dir,ext))
+	for file in files:
+		if isfile(file): copy(file,t_dir+'/..')
+
+# (OCT/MAT) run matlab temp file
+try:
+	start = time()
+	check_call(julia_path+\
+		'./julia '+m_tmp+'.jl',shell=True)
+	delta = time()-start
+	print 'Calling+executing JULIA :: ',delta
+except Exception, e:
+	print e
+
+# (GLE) compile figs
+if not no_gleplot:
+	start = time()
+	if png_out:
+		for f in figs:
+			f.compile(png_resol)
+	else:
+		for f in figs:
+			f.compile() # pdf output
+	delta = time()-start
+	print 'Calling+executing GLE :: ',delta
+else: # just copy gle files
+	for f in figs: f.writefile()
+	copy_xt("*.gle")
+
+# CLEANUP
+if not devmode:
+	if png_out:
+		copy_xt("*.png")
+	else:
+		copy_xt("*.pdf")
+	rmtree(t_dir)

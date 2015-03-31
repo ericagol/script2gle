@@ -1,0 +1,5 @@
+preamble: 2
+\documentclass{article}
+\usepackage{palatino}
+\usepackage{mathpazo}
+0.185062 0.252918 0.289931 0.326943 0.363955 0.431811 0.518174 0.623042 0.752586 0.900635
