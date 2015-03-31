@@ -33,7 +33,7 @@ if len(argv)>2:
 			no_octave = True
 		elif bool(match(r'-png',arg)):
 			png_out   = True
-			png_resol = '300' if (len(arg)==4) else arg[4:]
+			png_resol = '300'
 		elif bool(match(r'-notex|-draft',arg)):
 			no_tex = True
 		else:

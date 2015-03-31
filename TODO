@@ -1,9 +1,14 @@
+#
+# SORT THIS FILE
+#
+# 	add possibility to add resolution after png (better catch of args)
+# 	>> s2g blah.jl -notex -png 250 
+#
+#
 # ----------------------------------------------------------------------------
 #
-# 	Latest working review: Dec 1 2014
-#
-# TODO [March 2014]
-#
+# 	CONTOUR (cf GLEMan)
+# 
 #	SOON
 #	<pin> keep updating "doc" (new markers)
 #

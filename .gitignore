@@ -1,9 +1,25 @@
-*.pdf
 *.eps
 *.gle
+*.pyc
+*.png
+
+## Core latex/pdflatex auxiliary files:
 *.aux
-*.dvi
+*.lof
 *.log
-*.ps
-*.texlines
-*.pinfo
+*.lot
+*.fls
+*.out
+*.toc
+
+## Intermediate documents:
+*.dvi
+*-converted-to.*
+*.pdf
+
+## Build tool auxiliary files:
+*.fdb_latexmk
+*.synctex
+*.synctex.gz
+*.synctex.gz(busy)
+*.pdfsync
