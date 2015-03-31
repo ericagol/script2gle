@@ -1,0 +1,9 @@
+*.pdf
+*.eps
+*.gle
+*.aux
+*.dvi
+*.log
+*.ps
+*.texlines
+*.pinfo

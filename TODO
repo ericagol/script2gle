@@ -1,0 +1,88 @@
+# ----------------------------------------------------------------------------
+#
+# 	Latest working review: Dec 1 2014
+#
+# TODO [March 2014]
+#
+#	SOON
+#	<pin> keep updating "doc" (new markers)
+#
+#	STUB
+#	find and replace stub blocks
+#
+# 	NOT URGENT
+# 	<> verbatim mode explaining what's going on
+#	<> legend position
+#	<> grid (think about better way than GLE xaxis grid (too strong))
+#	<> possibility to include specific m2g commands %!m2g
+#			* example: remove bounding box of legend (a bit more direct)
+#			than wainting for the improbable (and complicated) matlab
+#			http://www.mathworks.com/matlabcentral/newsreader/view_thread/28318
+#			* other example have GLE colors in comment of plot line
+#
+#	<> multiline commands (plot ... \ ... )
+#		>> detect ((.+)\.{3}\s*\n) then read next line
+#			removing ^\s* [>>> multiline.py]
+#	<> additonal plot options?
+#	<> axis ij, axis tight, ...
+# 	<> axis location -> xaxislocation (axis2 in gle)
+#
+# -- HARDER ----------
+# 	<> extract sequences (0:0.1:1) using something like
+#		match(r'\s*(.+)\s*:\s*(.+)\s*:\s*(.+)\s*',left).group(1,2,3)
+#		problem is in generating the sequence (numpy?)
+#		already partly done for gca xtick,ytick
+#	?<> more clever extraction of things in array ([f(a),f(b)]), see s2gf.array_x
+#			prob requires using matlab directly to express the values -> tricky/messy
+#
+# -- COMMENTS --------
+#
+# 	fragile link to g_gle module + matlab
+# 	solved partially with expanduser (uses dropbox)
+#
+##########################################################################
+# Draft doc
+#
+# 	Calling m2g
+#		-dev: 			leaves temp folder
+#		-noplot|-nogle:	does not compile .gle files
+#		-nooct|-noct:	uses matlab
+#
+#	Way it works
+#		reads original (.m) file line by line and write
+#		effective lines in temp .m file
+#		if markers are recognized (*) the line gets written
+#		appropriately in temp matlab file + gle files get
+#		created.
+#		eventually, everything is compiled, pdf are copied,
+#		and the temporary folder is destroyed
+#
+#	Markers
+#		-figure
+#		-plot
+#			>> calls (s2gf.read_plot): rewrite line to
+#				output .dat files that will be considerd
+#				by GLE. Extract options for gle as well
+#		-stem,semilogx/y, loglog
+#			>> see plot
+#		-hold on
+#			>> keep writing in same gle file
+#		-xlabel, ylabel, xlim, ylim, title
+#		-legend
+#	 	-set(gca,...)
+#			>> x/ytick(label) x/yscale x/ylim
+#
+#	Assumption of simplicity
+#		- numbers given in x.y format (not .y)
+#		- interpretation of arguments or elements of array
+#			needed in gle. Eg. array=[0 1 0 1]; axis(array)
+#			or [0 1:2 3] will fail
+#		- one line per translatable instruction
+#			eg. not figure(); plot(..)
+#	 	- x/yscale given => assume going to log (no switching)
+#		- legend in format legend('leg1','leg2',...)
+#			also, as many legends as lstyles in curfig
+# 		- no 3d (who needs 3d?)
+# 		- atm assume uniline (no triple dot (...) ellipsis)
+#
+##########################################################################
