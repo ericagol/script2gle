@@ -7,7 +7,7 @@ plot(x,y,'-b','linewidth',1.5)
 #
 title('The std normal distribution')
 xlabel('$x$')
-ylabel('$\mathcal N(x;0,1)$')
+ylabel('$\mathcal N(x;0,1)$ 50%')
 #
 set(gca,'xtick',[-5 -2.5 0 2.5 5],'ytick',0:.5:1)
 #

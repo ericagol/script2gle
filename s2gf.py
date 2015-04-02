@@ -19,35 +19,13 @@ cnt_d 		= lambda s,d: sub(r'\'.*\'','',s).count(d)
 shut_l      = lambda l: [e+r'$' for e in l]
 # check is string is in list
 rem_esp 	= lambda l: [sub(' ','',e) for e in l]
+# check if pattern is open
+check_open  = lambda s,d1,d2: s_cld(s) if d1=='\'' else not bool(cnt_d(s,d1)-cnt_d(s,d2))
+
 #
 ###########################
 # FUNCTIONS ###############
 ###########################
-# +++++++++++++++++++++++++++++++++++++++++
-# CLOSE SPLIT:
-# 	close broken patterns after .split(',')
-#
-#	<in>:	delimiters and list coming from
-#			a split along the commas
-# 	<out>: 	list of strings reconstructed
-#			along broken patterns
-def close_split(d1,d2,lst):
-	if d1=='\'':
-		check = lambda s: s_cld(s)
-	else:
-		check = lambda s: not bool(cnt_d(s,d1)-cnt_d(s,d2))
-	lst2,tmp  = [],''
-	for s in lst:
-		tmp += s+','
-		if check(tmp):
-			lst2.append(tmp[:-1])
-			tmp = ''
-	if not lst2:
-		lst2 = lst
-	elif tmp[:-1]:
-		lst2.append(tmp[:-1])
-	return lst2
-
 # +++++++++++++++++++++++++++++++++++++++++
 # GET FARGS :
 #	get arguments of function str
@@ -59,12 +37,32 @@ def get_fargs(line,remesp=True):
 	core = search(r'^(\w+)\((.*)(\)\s*;?\s*)$',line).group(2)
 	# split core with commas
 	spl  = core.split(',')
-	# merge '', (), [], {} that might have been broken
+	# merge '', (), [], {} that might have been broken (see CLOSE_SPLIT)
 	args = spl
 	for delim in [['\'','\''],['(',')'],['[',']'],['{','}']]:
 		args = close_split(delim[0],delim[1],args)
 	if remesp: return rem_esp(args)
 	else:      return args
+# +++++++++++++++++++++++++++++++++++++++++
+# CLOSE SPLIT:
+# 	close broken patterns after .split(',')
+#
+#	<in>:	delimiters and list coming from
+#			a split along the commas
+# 	<out>: 	list of strings reconstructed
+#			along broken patterns
+def close_split(d1,d2,lst):
+	lst2,tmp  = [],''
+	for s in lst:
+		tmp += s+','
+		if check_open(tmp,d1,d2):
+			lst2.append(tmp[:-1])
+			tmp = ''
+	if not lst2:
+		lst2 = lst
+	elif tmp[:-1]:
+		lst2.append(tmp[:-1])
+	return lst2
 # +++++++++++++++++++++++++++++++++++++++++++
 # ARRAY X
 # 	extract numbers in array string '[a b c]'
@@ -110,7 +108,7 @@ def array_x(s):
 #
 #	<in>:	line (from core part of matlab doc)
 #	<out>:	returns line + output line
-def read_plot(line, t_dir, figc, plotc):
+def read_plot(line, t_dir, figc, plotc, sdict):
 	plt,tls  = {},{}
 	# default options
 	plt['lwidth'] = ' lwidth 0 '
@@ -122,24 +120,28 @@ def read_plot(line, t_dir, figc, plotc):
 	flags = {'lstyle':False,'lwidth':False,'msize':False,'mface':False}
 	# get plot arguments
 	args = get_fargs(line)
-	# JULIA ----------------------------
-	# generate julia code to output data
+	# ------------------------------------------
+	# SCRIPT -----------------------------------
+	# generate script to output appropriate data
 	sta = 2;
 	# case one var: plot(x), plot(x,'+r'), ...
 	if len(args)==1 or match(r'^\s*\'',args[1]):
-		mcode = 'x__ = 1:prod(size('+args[0]+'))\n'
-		mcode+= 'y__ = '+args[0]+'\n'
-		sta   = 1
+		script = 'x__ = 1:prod(size('+args[0]+'))\n'
+		script+= 'y__ = %s%s\n'%(args[0],sdict['EOL'])
+		sta    = 1
 	# case two vars plot(x,y,'+r')
 	else:
-		mcode = 'x__ = '+args[0]+'\n'
-		mcode+= 'y__ = '+args[1]+'\n'
+		script = 'x__ = %s%s\n'%(args[0],sdict['EOL'])
+		script+= 'y__ = %s%s\n'%(args[1],sdict['EOL'])
 	#
-	mcode+= 'c__ = [x__[:] y__[:]]\n'
+	vecx  = 'x__%s'%sdict['vec']
+	vecy  = 'y__%s'%sdict['vec']
+	script+= 'c__ = %s%s\n'%(sdict['cbind']%(vecx,vecy),sdict['EOL'])
 	dfn   = t_dir+"datplot"+str(figc)+'_'+str(plotc)+".dat"
-	mcode+= "writecsv(\"%s\",c__)\n"%dfn
+	script+= "%s%s\n"%(sdict['writevar']%(dfn,'c__'),sdict['EOL'])
 	#
-	plt['mcode'] = mcode
+	plt['script'] = script
+	# ---------------------------------
 	# GLE -----------------------------
 	# generate gle code to read options
 	optsraw = args[sta:]
