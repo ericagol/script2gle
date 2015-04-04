@@ -48,7 +48,7 @@ fname2 	   = fname.split('/')
 fname2 	   = fname2[-1] 		# only name of file
 gname  	   = fname+'.gle'
 #
-t_dir = '.%s_tmpdir/'%fname
+t_dir = '_%s_tmpdir/'%fname
 s_tmp = t_dir+'script_tmp'
 # create folder
 check_call('mkdir -p '+t_dir,shell=True)
@@ -86,6 +86,7 @@ if fext == '.jl':
 		'vec'		: '[:]',
 		'EOL'		: '',
 		'cbind' 	: '[%s %s]',
+		'span' 		: '1:prod(size(%s))'
 	}
 	caller = 'julia'
 elif fext == '.m':
@@ -95,13 +96,30 @@ elif fext == '.m':
 		'vec'		: '(:)',
 		'EOL'		: ';',
 		'cbind'		: '[%s %s]',
+		'span'		: '1:prod(size(%s))'
 	}
 	if no_octave:
 		caller = 'matlab -nodesktop -nosplash -noFigureWindows -r'
 	else:
 		caller = 'octave -q'
-
 markers = r'|'.join([markers,script_dict['append']])
+#
+# legend position conversion
+#
+leg_dict = {
+	'north'				: 'tc',
+	'northoutside'		: 'tc offset 0 -0.1', # need figsize adjustment + removal of scale auto
+	'northwest'			: 'tl',
+	'northwestoutside'	: 'tl offset -0.1 0', # idem
+	'northeast'			: 'tr',
+	'northeastoutside'	: 'tr offset -0.1 0', # idem
+	'south'				: 'bc',
+	'southoutside'		: 'bc offset 0 -0.1', # idem
+	'southwest'			: 'bl',
+	'southwestoutside'	: 'bl offset -0.1 0', # idem
+	'southeast' 		: 'br',
+	'southeastoutside' 	: 'br offset -0.1 0',
+}
 
 # == MAIN BLOCK =================
 # create temp matlab file which
@@ -249,11 +267,20 @@ with open(rname,'r') as sf_orig:
 	 		# ------------
 	 		# LEGEND LINES
 			elif marker=='legend':
-				legs = s2gf.get_fargs(l)
-				for leg_i in range(0,len(legs)):
-					fig.legend+=' text "'+s2gf.strip_d(legs[leg_i],'\'')+'"'+lstyles[leg_i]+'\n'
-			# # ---------
-	 		# RUN LINES
+				leg_stack = s2gf.get_fargs(l,False)
+				leg_c     = 0
+				while leg_stack:
+					leg_i_str = s2gf.strip_d(leg_stack.pop(0),'\'')
+					if leg_i_str in ['location','Location']:
+						leg_loc    = s2gf.strip_d(leg_stack.pop(0),'\'')
+						fig.legopt = 'compact pos %s'%leg_dict.setdefault(leg_loc,'tr')
+					else:
+						if no_tex: leg_i_str = sub(r'\\','/',leg_i_str)
+						#
+						fig.legend += 'text "%s" %s\n'%(leg_i_str,lstyles[leg_c])
+						leg_c      += 1
+			# ------------------------
+	 		# RUN LINES (ext. scripts)
 			elif marker==script_dict['append']:
 				scriptname = s2gf.strip_d(s2gf.get_fargs(l)[0],'\"')
 				print 'Appending script <', scriptname, '>...'

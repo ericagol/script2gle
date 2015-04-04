@@ -126,7 +126,7 @@ def read_plot(line, t_dir, figc, plotc, sdict):
 	sta = 2;
 	# case one var: plot(x), plot(x,'+r'), ...
 	if len(args)==1 or match(r'^\s*\'',args[1]):
-		script = 'x__ = 1:prod(size('+args[0]+'))\n'
+		script = 'x__ = %s%s\n'%(sdict['span']%args[0],sdict['EOL'])
 		script+= 'y__ = %s%s\n'%(args[0],sdict['EOL'])
 		sta    = 1
 	# case two vars plot(x,y,'+r')
