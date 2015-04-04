@@ -51,9 +51,9 @@ If you want a png output, use the option `-png` eg:
 ../../s2g ex_basic.jl -notex -png
 ```
 
-## Example in Julia
+## Example in Octave/Matlab
 
-Here is a very simple example with Octave, in a file `smalltest.m` (already in `examples/octavematlab/`) write:
+Here is a very simple example with Octave/Matlab, in a file `smalltest.m` (already in `examples/octavematlab/`) write:
 
 ```
 x = linspace(-5,5,500);
@@ -67,7 +67,9 @@ ylabel('$p(x)$')
 legend('$\propto\mathcal N(0,1)$','$\propto$ Laplace','Location','southeast')
 ```
 
-then in your terminal, in the same directory with `$PATHS2G` the path to the executable `s2g`,
+**Remark**: due to the similarity between Octave/Matlab and Julia syntax, the above example can be also be run with Julia, just name it `smalltest.jl` and let `s2g` do the rest. 
+
+in your terminal, in the same directory with `$PATHS2G` the path to the executable `s2g`,
 
 ```
 $PATHS2G/s2g smalltest.m -png
