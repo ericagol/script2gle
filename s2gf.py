@@ -134,10 +134,10 @@ def read_plot(line, t_dir, figc, plotc, sdict):
 		script = 'x__ = %s%s\n'%(args[0],sdict['EOL'])
 		script+= 'y__ = %s%s\n'%(args[1],sdict['EOL'])
 	#
-	vecx  = 'x__%s'%sdict['vec']
-	vecy  = 'y__%s'%sdict['vec']
+	vecx   = 'x__%s'%sdict['vec']
+	vecy   = 'y__%s'%sdict['vec']
 	script+= 'c__ = %s%s\n'%(sdict['cbind']%(vecx,vecy),sdict['EOL'])
-	dfn   = t_dir+"datplot"+str(figc)+'_'+str(plotc)+".dat"
+	dfn    = t_dir+"datplot"+str(figc)+'_'+str(plotc)+".dat"
 	script+= "%s%s\n"%(sdict['writevar']%(dfn,'c__'),sdict['EOL'])
 	#
 	plt['script'] = script
@@ -197,7 +197,7 @@ def read_plot(line, t_dir, figc, plotc, sdict):
 			flags['lwidth']=True
 			opt = strip_d(optsraw.pop(0).lower(),'\'')
 			lw  = float(opt)
-			lw  = round(((lw/3)**.7)/10,2)
+			lw  = round(((lw/3)**.7)/10,2) # magic...
 			plt['lwidth'] = ' lwidth '+str(lw)+' '
 		#
 		# MSIZE OPTION

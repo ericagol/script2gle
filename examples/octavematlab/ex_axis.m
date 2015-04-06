@@ -1,5 +1,6 @@
 x = linspace(-3,6,200);
 y = sin(x).*exp(-x.*cos(x));
+
 plot(x,y,'-r','linewidth',2)
 
 % AXIS TICKS

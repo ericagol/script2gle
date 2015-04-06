@@ -82,7 +82,7 @@ markers = r'|'.join([
 if fext == '.jl':
 	script_dict = {
 		'append'	: 'include',
-		'writevar'	: 'writecsv(\"%s\",%s)\n',
+		'writevar'	: 'writecsv(\"%s\",%s)',
 		'vec'		: '[:]',
 		'EOL'		: '',
 		'cbind' 	: '[%s %s]',
@@ -92,7 +92,7 @@ if fext == '.jl':
 elif fext == '.m':
 	script_dict = {
 		'append'	: 'run',
-		'writevar'	: 'save(\'-ascii\',\'%s\',\'%s\');\n',
+		'writevar'	: 'save(\'-ascii\',\'%s\',\'%s\')',
 		'vec'		: '(:)',
 		'EOL'		: ';',
 		'cbind'		: '[%s %s]',
@@ -108,19 +108,30 @@ markers = r'|'.join([markers,script_dict['append']])
 #
 leg_dict = {
 	'north'				: 'tc',
+	'n'					: 'tc',
 	'northoutside'		: 'tc offset 0 -0.1', # need figsize adjustment + removal of scale auto
+	'no' 				: 'tc offset 0 -0.1',
 	'northwest'			: 'tl',
+	'nw' 				: 'tl',
 	'northwestoutside'	: 'tl offset -0.1 0', # idem
+	'nwo'				: 'tl offset -0.1 0',
 	'northeast'			: 'tr',
+	'ne'				: 'tr',
 	'northeastoutside'	: 'tr offset -0.1 0', # idem
+	'neo'				: 'tr offset -0.1 0',
 	'south'				: 'bc',
+	's'					: 'bc',
 	'southoutside'		: 'bc offset 0 -0.1', # idem
+	'so'				: 'bc offset 0 -0.1',
 	'southwest'			: 'bl',
+	'sw'				: 'bl',
 	'southwestoutside'	: 'bl offset -0.1 0', # idem
+	'swo'				: 'bl offset -0.1 0',
 	'southeast' 		: 'br',
+	'se'				: 'br',
 	'southeastoutside' 	: 'br offset -0.1 0',
+	'seo'				: 'br offset -0.1 0',
 }
-
 # == MAIN BLOCK =================
 # create temp matlab file which
 # outputs data file for each plot
@@ -227,8 +238,8 @@ with open(rname,'r') as sf_orig:
 				if match(r'set\(gca',l):
 					args = s2gf.get_fargs(l,False)[1:] # False -> leave spaces
 					while args:
-						arg = s2gf.strip_d(args.pop(0).lower(),'\'')
-						if match(r'[xy]tick$',arg):
+						arg = s2gf.strip_d(args.pop(0).lower(),'\'').upper()
+						if match(r'[XY]TICK$',arg):
 							ticks = args.pop(0)
 							#
 							nc = ticks.count(':')
@@ -244,18 +255,24 @@ with open(rname,'r') as sf_orig:
 								ticks = s2gf.strip_d(ticks,r'\[|\]')
 								ticks = sub(',',' ',ticks)
 								fig.axopt+='%splaces %s\n'%(arg[0],ticks)
-						elif match(r'[xy]ticklabel$',arg):
+						elif match(r'[XY]TICKLABEL$',arg):
 							labels = s2gf.strip_d(args.pop(0),r'\[|\]')
 							labels = sub(r'\'','"',labels)
 							labels = sub(',',' ',labels)
-			 				fig.axopt+='%snames %s\n'%(arg[0],sub('%','\%',labels))
-						elif match(r'[xy]scale$',arg):
+							if no_tex:
+								fig.axopt+='%snames %s\n'%(arg[0],sub(r'\\','/',labels))
+							else:
+			 					fig.axopt+='%snames %s\n'%(arg[0],sub('%','\%',labels))
+						elif match(r'[XY]SCALE$',arg):
 							scale = args.pop(0)
 							fig.axopt+='%saxis log\n'%arg[0]
-						elif match(r'[xy]lim$',arg):
+						elif match(r'[XY]LIM$',arg):
 							al  = args.pop(0)
 			 				al_ = s2gf.array_x(al)
 			 				fig.axopt+='%saxis min %s max %s\n'%(arg[0],al_[0],al_[1])
+			 			elif match(r'FONTSIZE',arg):
+			 				fs  = args.pop(0)
+			 				fig.figoptfs = 'set hei %f'%(float(fs)/28.35/2.) # psp to cm
 				# -------------
 				# <- set GCF ->
 				elif match(r'set\(gcf',l):
@@ -271,14 +288,23 @@ with open(rname,'r') as sf_orig:
 				leg_c     = 0
 				while leg_stack:
 					leg_i_str = s2gf.strip_d(leg_stack.pop(0),'\'')
-					if leg_i_str in ['location','Location']:
+					legistru  = leg_i_str.upper()
+					if   legistru == 'LOCATION':
 						leg_loc    = s2gf.strip_d(leg_stack.pop(0),'\'')
-						fig.legopt = 'compact pos %s'%leg_dict.setdefault(leg_loc,'tr')
+						fig.legpos = 'pos %s'%leg_dict.setdefault(leg_loc,'tr')
+					elif legistru == 'BOXOFF':
+						fig.legopt+= ' nobox'
+					elif legistru == 'OFFSET':
+						leg_off    = s2gf.array_x(leg_stack.pop(0))
+						fig.legoff = ' offset '+' '.join(leg_off)
 					else:
 						if no_tex: leg_i_str = sub(r'\\','/',leg_i_str)
 						#
-						fig.legend += 'text "%s" %s\n'%(leg_i_str,lstyles[leg_c])
-						leg_c      += 1
+						try:
+							fig.legend += 'text "%s" %s\n'%(leg_i_str,lstyles[leg_c])
+							leg_c      += 1
+						except IndexError, e:
+							print '\nerror::S2G:: too many legends, did you forget a HOLD?\n'
 			# ------------------------
 	 		# RUN LINES (ext. scripts)
 			elif marker==script_dict['append']:

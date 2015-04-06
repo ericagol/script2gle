@@ -8,8 +8,9 @@ class GLE:
 		# ----------------------------------------
 		self.fname		= fname
 		self.figsize 	= 'size 6 4'				# figure size
-		self.figopt  	= 'set hei .25 font psh'	# fontsize, if latex true, font ignored
-		self.tex  	  	= True 						# enable LaTeX engine
+		self.figoptfs  	= 'set hei .25'				# fontsize (in cm)
+		self.figoptft 	= ' font psh'				# font, if TeX, ignored
+		self.tex  	  	= True 						# enable TeX engine
 		self.texfont 	= 'palatino' 				# > Latex font
 		self.texmfont 	= 'mathpazo' 				# > Latex math font
 		self.scale   	= 'scale auto'				# fig centered + tight box
@@ -20,7 +21,9 @@ class GLE:
 								y2axis off\n''' 	# axis options (log, xplaces..)
 		self.extra  	= ''						# add. stuff (draw arrow,..)
 		self.legend  	= ''						# legend
-		self.legopt  	= 'compact pos tr'		    # legend position, style
+		self.legpos  	= 'pos tr'		    		# legend position
+		self.legoff 	= ''
+		self.legopt 	= 'compact'
 
 		# -----------------------
 		# <GLE> Private variables
@@ -72,7 +75,7 @@ class GLE:
 				'end graph'
 		# key (legend) framework
 		key   = 'begin key' 	+nt+\
-					self.legopt +nt+\
+					self.legopt +' '+ self.legpos+self.legoff+nt+\
 					self.legend +n +\
 				'end key'
 		# write everything to .GLE file
@@ -82,11 +85,11 @@ class GLE:
 							'''!through the generating source.'''+n*2)
 			# Fig basics
 			gle_out__.write( self.figsize+n+
-							 self.figopt +n*2 )
+							 self.figoptfs+self.figoptft+n*2 )
 			# Tex setup
 			if self.tex:
 				gle_out__.write('begin texpreamble'					+nt+
-								'\usepackage{'+self.texfont+'}'		+nt+
+								'\usepackage{'+self.texfont +'}'	+nt+
 								'\usepackage{'+self.texmfont+'}'	+n +
 								'end texpreamble' 					+n +
 								'set texlabels 1 texscale scale' 	+n*2)
