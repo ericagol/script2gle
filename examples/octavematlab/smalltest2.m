@@ -11,5 +11,5 @@ set(gca,'fontsize',12)
 % any of the following line will work
 
 % fill([x,fliplr(x)],[exp(-x.^2/2),fliplr(exp(-abs(x)))],'color','cornflowerblue','alpha',0.2)
-% fillbetween(x,exp(-x.^2/2),exp(-abs(x)),'color','indianred','alpha',0.8)
-fillbetween(x,exp(-x.^2/2),exp(-abs(x)),'color',[1 0 1 0.3])
+% fillbetween(x,exp(-x.^2/2),exp(-abs(x)),'color',[1 0 1 0.3])
+fillbetween(x,exp(-x.^2/2),exp(-abs(x)),'color','palegreen','alpha',0.7)

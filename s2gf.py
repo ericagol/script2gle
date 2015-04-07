@@ -256,6 +256,7 @@ def read_fill(line,t_dir,figc,plotc,sdict,cdict,srdict):
  			a = 1 if not alphasearch else alphasearch.group(1)
  			fill['color']='rgba(%s,%s,%s,%s)'%(r,g,b,a)
  		else:
+ 			args = rem_esp(args)
  			# check if alpha
  			if len(args)>4 and strip_d(args[4].lower(),'\'')=='alpha':
  				r,g,b = srdict.setdefault(strip_d(args[3].lower(),'\''),(128,128,128))

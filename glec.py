@@ -43,7 +43,7 @@ class GLE:
 			print 'GLE::compiling fig... < %s >'%self.fname
 			if png_resol:
 				check_call('gle -device png -r %s -vb 0 %s %s%s'%
-					(self.trsp*'-cairo',png_resol,self.fname,self.fext),shell=True)
+					(png_resol,self.trsp*'-cairo',self.fname,self.fext),shell=True)
 			else:
 				check_call('gle -device pdf -vb 0 %s %s%s'%
 					(self.trsp*'-cairo',self.fname,self.fext),shell=True)

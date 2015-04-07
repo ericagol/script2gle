@@ -79,4 +79,24 @@ $PATHS2G/s2g smalltest.m -png
 
 which should generate the figure below:
 
-![smalltest.m](/examples/octavematlab/smalltest_plot1_g.png)
+![smalltest.m](/examples/octavematlab/smalltest_plot1_g.png);
+
+another similar example with the `fillbetween` command
+
+```
+x = linspace(-5,5,500);
+plot(x,exp(-x.^2/2),'-r')
+hold on
+plot(x,exp(-abs(x)),'-','color','cornflowerblue')
+set(gca,'ytick',[0 0.5 1],'yticklabel',['0', '1/2', '1'])
+set(gca,'xtick',[-5 -2.5 0 2.5 5])
+xlabel('$x$')
+ylabel('$p(x)$')
+legend('$\propto\mathcal N(0,1)$','$\propto$ Laplace','location','southeast')
+set(gca,'fontsize',12)
+fillbetween(x,exp(-x.^2/2),exp(-abs(x)),'color','palegreen','alpha',0.7)
+```
+
+which should generate the figure below:
+
+![smalltest2.m](/examples/octavematlab/smalltest2_plot1_g.png);
