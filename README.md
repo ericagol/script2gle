@@ -31,25 +31,25 @@ If you intend to use transparency (`fill` command), then GLE needs to be able to
 
 With `Julia` go to the `examples/julia` directory and run
 
-```
+```Bash
 ../../s2g ex_basic.jl
 ```
 
 With `Octave/Matlab` go to the `examples/octavematlab`
 
-```
+```Bash
 ../../s2g ex_axis.m
 ```
 
 It takes a few seconds to compile the figure since it must run `pdflatex` to generate the labels etc. Note that there is also an option without TeX to have a quick look at figures (or if your figure has no need for TeX): running `s2g` with option `-notex` or (equivalently) `-draft` will escape the TeX and just quickly compile the figure:
 
-```
+```Bash
 ../../s2g ex_basic.jl -notex
 ```
 
 If you want a png output, use the option `-png` eg:
 
-```
+```Bash
 ../../s2g ex_basic.jl -notex -png
 ```
 
@@ -57,7 +57,7 @@ If you want a png output, use the option `-png` eg:
 
 Here is a very simple example with Octave/Matlab, in a file `smalltest.m` (already in `examples/octavematlab/`) write:
 
-```
+```Matlab
 x = linspace(-5,5,500);
 plot(x,exp(-x.^2/2),'-b')
 hold on
@@ -73,7 +73,7 @@ legend('$\propto\mathcal N(0,1)$','$\propto$ Laplace','Location','southeast')
 
 in your terminal, in the same directory with `$PATHS2G` the path to the executable `s2g`,
 
-```
+```Bash
 $PATHS2G/s2g smalltest.m -png
 ```
 
@@ -83,7 +83,7 @@ which should generate the figure below:
 
 another similar example with the `fillbetween` command
 
-```
+```Matlab
 x = linspace(-5,5,500);
 plot(x,exp(-x.^2/2),'-r')
 hold on
