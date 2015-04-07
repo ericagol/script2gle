@@ -79,7 +79,7 @@ $PATHS2G/s2g smalltest.m -png
 
 which should generate the figure below:
 
-![smalltest.m](/examples/octavematlab/smalltest_plot1_g.png);
+![smalltest.m](/examples/octavematlab/smalltest_plot1_g.png)
 
 another similar example with the `fillbetween` command
 
