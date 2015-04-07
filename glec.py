@@ -19,6 +19,7 @@ class GLE:
 								ysubticks off
 								x2axis off
 								y2axis off\n''' 	# axis options (log, xplaces..)
+		self.trsp		= False						# transparency
 		self.extra  	= ''						# add. stuff (draw arrow,..)
 		self.legend  	= ''						# legend
 		self.legpos  	= 'pos tr'		    		# legend position
@@ -41,11 +42,11 @@ class GLE:
 		try:
 			print 'GLE::compiling fig... < %s >'%self.fname
 			if png_resol:
-				check_call('gle -device png -r %s -vb 0 %s%s'%
-					(png_resol,self.fname,self.fext),shell=True)
+				check_call('gle -device png -r %s -vb 0 %s %s%s'%
+					(self.trsp*'-cairo',png_resol,self.fname,self.fext),shell=True)
 			else:
-				check_call('gle -device pdf -vb 0 %s%s'%
-					(self.fname,self.fext),shell=True)
+				check_call('gle -device pdf -vb 0 %s %s%s'%
+					(self.trsp*'-cairo',self.fname,self.fext),shell=True)
 		except Exception, e:
 			 print e
 

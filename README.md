@@ -25,6 +25,8 @@ Roughly, the workflow is as follows:
 
 I'm assuming that your `$PATH` variable has been updated accordingly so that you can call each of those with `gle`, `julia`, `octave` and `matlab`.
 
+If you intend to use transparency (`fill` command), then GLE needs to be able to run with a `cairo` option, nothing to be done on Linux (tested on Fedora) or OSX (tested on Yosemite) but I haven't tested it on Windows.
+
 ## Quick example
 
 With `Julia` go to the `examples/julia` directory and run

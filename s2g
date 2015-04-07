@@ -13,6 +13,7 @@ from time import time
 # OWN MODULES
 import glec
 import s2gf
+from s2gd import *
 
 ###########################
 # USER ARGUMENTS ##########
@@ -62,25 +63,11 @@ flags   = {'holdon':False}
 newfig   = lambda figc: glec.gle(t_dir+fname2+'_plot'+str(figc))
 getarg1  = lambda l,re: s2gf.strip_d(s2gf.get_fargs(l,re)[0],'\'')
 #
-# markers
-ignored = r'|'.join(['home','clear','close'])
-markers = r'|'.join([ 	
-	'figure',
-	'plot',
-	'hold',
-	r'[xy]lim',
-	r'[xy]label',
-	'title',
-	r'[xy]?axis',
-	'set',
-	'legend',
-	r'semilog[xy]',
-	'loglog',
-	'stem',
-	r'(#j2g:)'])
-# script dictionary
+#
+# script dictionary for the different languages
+# >> JULIA
 if fext == '.jl':
-	script_dict = {
+	script_dict_JL = {
 		'append'	: 'include',
 		'writevar'	: 'writecsv(\"%s\",%s)',
 		'vec'		: '[:]',
@@ -89,6 +76,7 @@ if fext == '.jl':
 		'span' 		: '1:prod(size(%s))'
 	}
 	caller = 'julia'
+# >> MATLAB/OCTAVE
 elif fext == '.m':
 	script_dict = {
 		'append'	: 'run',
@@ -104,34 +92,6 @@ elif fext == '.m':
 		caller = 'octave -q'
 markers = r'|'.join([markers,script_dict['append']])
 #
-# legend position conversion
-#
-leg_dict = {
-	'north'				: 'tc',
-	'n'					: 'tc',
-	'northoutside'		: 'tc offset 0 -0.1', # need figsize adjustment + removal of scale auto
-	'no' 				: 'tc offset 0 -0.1',
-	'northwest'			: 'tl',
-	'nw' 				: 'tl',
-	'northwestoutside'	: 'tl offset -0.1 0', # idem
-	'nwo'				: 'tl offset -0.1 0',
-	'northeast'			: 'tr',
-	'ne'				: 'tr',
-	'northeastoutside'	: 'tr offset -0.1 0', # idem
-	'neo'				: 'tr offset -0.1 0',
-	'south'				: 'bc',
-	's'					: 'bc',
-	'southoutside'		: 'bc offset 0 -0.1', # idem
-	'so'				: 'bc offset 0 -0.1',
-	'southwest'			: 'bl',
-	'sw'				: 'bl',
-	'southwestoutside'	: 'bl offset -0.1 0', # idem
-	'swo'				: 'bl offset -0.1 0',
-	'southeast' 		: 'br',
-	'se'				: 'br',
-	'southeastoutside' 	: 'br offset -0.1 0',
-	'seo'				: 'br offset -0.1 0',
-}
 # == MAIN BLOCK =================
 # create temp matlab file which
 # outputs data file for each plot
@@ -171,7 +131,7 @@ with open(rname,'r') as sf_orig:
 				sf_tmp.write('#'+l)
 			# ---------
 			# PLOT LINE
-			elif marker in ['plot','semilogx','semilogy','stem','loglog']:
+			elif match(r'(?:plot|semilog[xy]|stem|loglog|fill|fillbetween)$',marker):
 				# ------------------
 				# <- NEW GLE FIG? ->
 				pre_figc = figc
@@ -187,34 +147,48 @@ with open(rname,'r') as sf_orig:
 					fig.tex = False if no_tex else True
 				# ------------------
 				# <- PLOT ACTIONS ->
-				# structify: extract code and options
-				plt = s2gf.read_plot(l,t_dir,figc,plotc,script_dict)
-				# -> write to temp script file
-				sf_tmp.write(plt['script'])
-				# -> write to temp gle file
-				block = 'data "datplot'+str(figc)+'_'+  \
-						str(plotc)+'.dat" d'+str(plotc)+\
-						'=c1,c2\n'
-				block+= 'd'+str(plotc)+									\
-							' impulses '*bool(match(r'stem',marker))+ 	\
-							plt['lstyle']+								\
-							plt['lwidth']+								\
-							plt['msize']+'\n'
-				fig.plot+=block
-				lstyles.append(plt['lstyle'])
-				if match(r'semilog[xy]?',marker): fig.axopt+=marker[-1]+'axis log\n'
-				elif match(r'loglog',marker): 	  fig.axopt+='xaxis log\nyaxis log\n'
+				if marker in ['plot','semilogx','semilogy','stem','loglog']:
+					# structify: extract code and options
+					plt = s2gf.read_plot(l,t_dir,figc,plotc,script_dict,col_dict)
+					# -> write to temp script file
+					sf_tmp.write(plt['script'])
+					# -> write to temp gle file
+					block = 'data "datplot%i_%i.dat" d%i=c1,c2\n'%(figc,plotc,plotc)
+					block+= 'd%i'%plotc+									\
+								' impulses '*bool(match(r'stem',marker))+ 	\
+								plt['lstyle']+								\
+								plt['lwidth']+								\
+								plt['msize']+'\n'
+					fig.plot+=block
+					lstyles.append(plt['lstyle'])
+					if match(r'semilog[xy]?',marker): fig.axopt+=marker[-1]+'axis log\n'
+					elif match(r'loglog',marker): 	  fig.axopt+='xaxis log\nyaxis log\n'
+				elif marker in ['fill','fillbetween']:
+					if marker == 'fillbetween':
+						fbargs = s2gf.get_fargs(l,False)
+		 				l      = 'fill([%s,foo],[%s,fliplr(%s)],%s)'%(fbargs[0],fbargs[1],fbargs[2],s2gf.strip_d(str(fbargs[3:]),r'^\[|\]$'))
+		 				l      = sub('"','',l)
+		 			#
+					fill = s2gf.read_fill(l,t_dir,figc,plotc,script_dict,col_dict,svg2rgb_dict)
+					# -> write to temp script file
+					sf_tmp.write(fill['script'])
+					# -> write to temp gle file
+					block    = 'data "datfill%i_%i.dat" d%i=c1,c2 d%i=c1,c3\n'%(figc,plotc,plotc,plotc+1)
+					block   += 'fill d%i,d%i color %s'%(plotc,plotc+1,fill['color'])
+					fig.plot+= block
+					fig.trsp = fill['alpha']
+					plotc   += 1
  			# -------------------------
  			# AXIS LINES (pass in temp)
  			# (atm, ignore fontsize)
- 			elif marker in ['xlabel','ylabel','title']:
+ 			elif match(r'(?:[xy]label|title)$',marker):
  				al = getarg1(l,False)
  				marker = '' if (marker=='title') else marker[0]
  				if no_tex:
  					fig.axopt+=marker+'title "%s"\n'%sub(r'\\','/',al)
  				else:
  					fig.axopt+=marker+'title "\\tex{%s}"\n'%sub('%','\%',al)
-			elif marker in ['xlim','ylim']:
+			elif match(r'(?:[xy]lim)$',marker):
  				al  = getarg1(l,False)
  				al_ = s2gf.array_x(al)
  				fig.axopt+=marker[0]+'axis min '+al_[0]+' max '+al_[1]+'\n'
@@ -244,11 +218,11 @@ with open(rname,'r') as sf_orig:
 							#
 							nc = ticks.count(':')
 							if nc==1: # format a:b
-								f,l = match(r'\[?\s*(.+)\s*:\s*(.+)\s*\]?',ticks).group(1,2)
+								f,l = match(r'\[?\s*(.+)\s*:\s*(.+)\s*\]?',ticks).group(1,2),
 								num = int(floor(float(l)-float(f))+1)
 								fig.axopt+='%saxis ftick %s dticks 1 nticks %i\n'%(arg[0],f,num)
 							elif nc==2: # format a:b:c
-								f,d,l = match(r'\[?\s*(.+)\s*:\s*(.+)\s*:\s*(.+)\s*\]?',ticks).group(1,2,3)
+								f,d,l = match(r'\[?\s*(.+)\s*:\s*(.+)\s*:\s*(.+)\s*\]?',ticks).group(1,2,3),
 								num   = int(floor((float(l)-float(f))/float(d)+1))
 								fig.axopt+='%saxis ftick %s dticks %s nticks %i\n'%(arg[0],f,d,num)
 							else: # a or [a b c]
