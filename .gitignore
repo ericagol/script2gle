@@ -25,3 +25,7 @@
 *.synctex.gz
 *.synctex.gz(busy)
 *.pdfsync
+
+*.pyc
+
+octave-workspace
