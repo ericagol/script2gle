@@ -1,9 +1,8 @@
 .DS_STORE
-octave-workspace
+*octave-workspace
 *.pyc
 *.eps
 *.gle
-*.pyc
 ## *.png
 
 ## Core latex/pdflatex auxiliary files:

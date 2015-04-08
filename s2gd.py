@@ -7,6 +7,7 @@ markers = r'|'.join([
 	'plot',
 	'fill',
 	'fillbetween',
+	'bar',
 	'hold',
 	r'[xy]lim',
 	r'[xy]label',

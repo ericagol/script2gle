@@ -21,7 +21,6 @@ shut_l      = lambda l: [e+r'$' for e in l]
 rem_esp 	= lambda l: [sub(' ','',e) for e in l]
 # check if pattern is open
 check_open  = lambda s,d1,d2: s_cld(s) if d1=='\'' else not bool(cnt_d(s,d1)-cnt_d(s,d2))
-
 #
 ###########################
 # FUNCTIONS ###############
@@ -218,7 +217,7 @@ def read_plot(line, t_dir, figc, plotc, sdict, cdict):
 	color  = 'color '+tls['color']
 	plt['lstyle'] = ' '+line+' '+marker+' '+color+' '
 	return plt
-
+#
 # +++++++++++++++++++++++++++++++++++++++++++
 # READ FILL:
 #	read a 'fill(...)' line, extracts script
@@ -228,6 +227,70 @@ def read_plot(line, t_dir, figc, plotc, sdict, cdict):
 #	<in>:	line (from core part of script doc)
 #	<out>:	returns line + output line
 def read_fill(line,t_dir,figc,plotc,sdict,cdict,srdict):
+	fill = {}
+	# default options
+ 	fill['color'] = 'gray'
+ 	fill['alpha'] = False
+ 	# get plot arguments
+ 	args = get_fargs(line,False)
+ 	# ------------------------------------------
+ 	# SCRIPT -----------------------------------
+ 	# generate script to output appropriate data
+ 	# > syntax:
+ 	# 	command: fill([x,fliplr(x)],[y,fliplr(y2)],'r')
+ 	# 	command: fill([x,fliplr(x)],[y,fliplr(y2)],'color',[rgb(a)])
+ 	# 	command: fill([x,fliplr(x)],[y,fliplr(y2)],'color','svgname','alpha',0.8)
+ 	#
+ 	xname  = search(r'\[\s*([a-zA-Z][a-zA-Z0-9]*)\s*',args[0]).group(1)
+ 	yname1 = search(r'\[(.*?),\s*fliplr',args[1]).group(1)
+ 	yname2 = search(r',\s*fliplr\((.*?)\)\s*\]',args[1]).group(1)
+ 	a=1
+ 	if len(args)<3:
+ 		pass
+ 	elif strip_d(args[2].lower(),'\'')=='color':
+ 		rgbsearch = search(r'\[\s*([0-9]*\.?[0-9]*)\s*,?\s*([0-9]*\.?[0-9]*)\s*,?\s*([0-9]*\.?[0-9]*)(.*)',args[3])
+ 		if rgbsearch:
+ 			r,g,b=rgbsearch.group(1,2,3)
+ 			alphasearch = search(r'\s*([0-9]*\.?[0-9]*)',rgbsearch.group(4))
+ 			a = 1 if not alphasearch else alphasearch.group(1)
+ 			fill['color']='rgba(%s,%s,%s,%s)'%(r,g,b,a)
+ 		else:
+ 			args = rem_esp(args)
+ 			# check if alpha
+ 			if len(args)>4 and strip_d(args[4].lower(),'\'')=='alpha':
+ 				r,g,b = srdict.setdefault(strip_d(args[3].lower(),'\''),(128,128,128))
+ 				a     = float(strip_d(args[5],'\''))*100
+ 				fill['color']='rgba255(%i,%i,%i,%f)'%(r,g,b,a)
+ 			else:
+ 				fill['color']=strip_d(args[3],'\'')
+ 	else:
+ 		fill['color']=cdict.setdefault(args[2],'gray')
+ 	#
+ 	if not a==1: fill['alpha']=True
+ 	#
+	script = 'x__  = %s%s\n'%(xname ,sdict['EOL'])
+	script+= 'y1__ = %s%s\n'%(yname1,sdict['EOL'])
+	script+= 'y2__ = %s%s\n'%(yname2,sdict['EOL'])
+  	#
+  	vecx   = 'x__%s' %sdict['vec']
+  	vecy1  = 'y1__%s'%sdict['vec']
+  	vecy2  = 'y2__%s'%sdict['vec']
+ 	script+= 'c__ = %s%s\n'%(sdict['cbind']%(sdict['cbind']%(vecx,vecy1),vecy2),sdict['EOL'])
+	dfn    = '%sdatfill%i_%i.dat'%(t_dir,figc,plotc)
+  	script+= '%s%s\n'%(sdict['writevar']%(dfn,'c__'),sdict['EOL'])
+ 	#
+ 	fill['script'] = script
+ 	return fill
+#
+# +++++++++++++++++++++++++++++++++++++++++++
+# READ BAR:
+#	read a 'bar(...)' line, extracts script
+#	code to output data, generates GLE bloc
+#	to input in GLE figure
+#
+#	<in>:	line (from core part of script doc)
+#	<out>:	returns line + output line
+def read_bar(line,t_dir,figc,plotc,sdict,cdict,srdict):
 	fill = {}
 	# default options
  	fill['color'] = 'gray'

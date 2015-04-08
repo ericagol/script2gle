@@ -60,7 +60,7 @@ figs    = []
 lstyles = [] # list of lstyles in curfig
 flags   = {'holdon':False}
 #
-newfig   = lambda figc: glec.gle(t_dir+fname2+'_plot'+str(figc))
+newfig   = lambda figc: glec.gle('%s%s_plot%i'%(t_dir,fname2,figc))
 getarg1  = lambda l,re: s2gf.strip_d(s2gf.get_fargs(l,re)[0],'\'')
 #
 #
@@ -131,7 +131,7 @@ with open(rname,'r') as sf_orig:
 				sf_tmp.write('#'+l)
 			# ---------
 			# PLOT LINE
-			elif match(r'(?:plot|semilog[xy]|stem|loglog|fill|fillbetween)$',marker):
+			elif match(r'(?:plot|semilog[xy]|stem|loglog|fill|fillbetween|bar)$',marker):
 				# ------------------
 				# <- NEW GLE FIG? ->
 				pre_figc = figc
@@ -177,7 +177,8 @@ with open(rname,'r') as sf_orig:
 					block   += 'fill d%i,d%i color %s'%(plotc,plotc+1,fill['color'])
 					fig.plot+= block
 					fig.trsp = fill['alpha']
-					plotc   += 1
+				elif marker == 'bar':
+					continue
  			# -------------------------
  			# AXIS LINES (pass in temp)
  			# (atm, ignore fontsize)
