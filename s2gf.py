@@ -21,27 +21,32 @@ shut_l      = lambda l: [e+r'$' for e in l]
 rem_esp 	= lambda l: [sub(' ','',e) for e in l]
 # check if pattern is open
 check_open  = lambda s,d1,d2: s_cld(s) if d1=='\'' else not bool(cnt_d(s,d1)-cnt_d(s,d2))
+# get first argument (cf getfargs)
+getarg1     = lambda l: strip_d(get_fargs(l)[0],'\'')
+# get next arg
+getnextarg  = lambda lst: strip_d(lst.pop(0).lower(),'\'')
 #
 ###########################
 # FUNCTIONS ###############
 ###########################
+#
 # +++++++++++++++++++++++++++++++++++++++++
 # GET FARGS :
 #	get arguments of function str
 #
 #	<in>:	string like plot(x,y,'+r')
 # 	<out>:	list of arguments
-def get_fargs(line,remesp=True):
+def get_fargs(line):
 	# get core
 	core = search(r'^(\w+)\((.*?)(\)\s*;?\s*)$',line).group(2)
 	# split core with commas
 	spl  = core.split(',')
+	spl  = [v.strip() for v in spl] # remove trailing spaces
 	# merge '', (), [], {} that might have been broken (see CLOSE_SPLIT)
 	args = spl
 	for delim in [['\'','\''],['(',')'],['[',']'],['{','}']]:
 		args = close_split(delim[0],delim[1],args)
-	if remesp: return rem_esp(args)
-	else:      return args
+	return args
 # +++++++++++++++++++++++++++++++++++++++++
 # CLOSE SPLIT:
 # 	close broken patterns after .split(',')
@@ -107,7 +112,8 @@ def array_x(s):
 #
 #	<in>:	line (from core part of script doc)
 #	<out>:	returns line + output line
-def read_plot(line, t_dir, figc, plotc, sdict, cdict):
+####def read_plot(line, t_dir, figc, plotc, sdict, cdict):
+def read_plot(line, figc, plotc, sdict, cdict):
 	plt,tls  = {},{}
 	# default options
 	plt['lwidth'] = ' lwidth 0 '
@@ -122,7 +128,7 @@ def read_plot(line, t_dir, figc, plotc, sdict, cdict):
 	# ------------------------------------------
 	# SCRIPT -----------------------------------
 	# generate script to output appropriate data
-	sta = 2;
+	sta = 2; # index of args where options start
 	# case one var: plot(x), plot(x,'+r'), ...
 	if len(args)==1 or match(r'^\s*\'',args[1]):
 		script = 'x__ = %s%s\n'%(sdict['span']%args[0],sdict['EOL'])
@@ -136,76 +142,78 @@ def read_plot(line, t_dir, figc, plotc, sdict, cdict):
 	vecx   = 'x__%s'%sdict['vec']
 	vecy   = 'y__%s'%sdict['vec']
 	script+= 'c__ = %s%s\n'%(sdict['cbind']%(vecx,vecy),sdict['EOL'])
-	dfn    = t_dir+"datplot"+str(figc)+'_'+str(plotc)+".dat"
+	####dfn    = "%sdatplot%i_%i.dat"%(t_dir,figc,plotc)
+	dfn    = "__datplot%i_%i.dat"%(figc,plotc)
 	script+= "%s%s\n"%(sdict['writevar']%(dfn,'c__'),sdict['EOL'])
 	#
 	plt['script'] = script
 	# ---------------------------------
 	# GLE -----------------------------
 	# generate gle code to read options
-	optsraw = args[sta:]
-	while optsraw:
-		opt = strip_d(optsraw.pop(0).lower(),'\'')
-		#
-		# LSTYLE
-		#
-		# patterns of the form '-+r'
-		p_lstyle = r'^(?![ml0-9])([-:]?)([-\.]?)([\+o\*\.xs\^]?)([rgbcmykw]?)'
-		lstyle = match(p_lstyle,opt)
-		if lstyle and not flags['lstyle']:
-			flags['lstyle']=True
+	if len(args)>sta:
+		optsraw = args[sta:]
+		while optsraw:
+			opt = getnextarg(optsraw)
 			#
-			# line (continuous, dashed, ...)
-			l_1 = lstyle.group(1)
-			l_2 = lstyle.group(2)
-			if   match(r':', l_1): 	tls['line'] = '2' 	# dotted
-			elif match(r'-', l_1) and \
-				 match(r'\.',l_2): 	tls['line'] = '6'	# dashed-dotted
-			elif match(r'-', l_1) and \
-				 match(r'-', l_2): 	tls['line'] = '3'	# dashed
-			elif match(r'-', l_1):	tls['line'] = '0'	# standard
+			# LSTYLE
 			#
-			# marker
-			l_3 = lstyle.group(3)
-			if   match(r'\+',l_3): 	tls['marker'] = 'plus'
-			elif match(r'o', l_3):	tls['marker'] = 'circle'
-			elif match(r'\*',l_3): 	tls['marker'] = 'star'
-			elif match(r'x', l_3):	tls['marker'] = 'cross'
-			elif match(r's', l_3):	tls['marker'] = 'square'
-			elif match(r'\^',l_3):	tls['marker'] = 'triangle'
+			# patterns of the form '-+r'
+			p_lstyle = r'^(?![ml0-9])([-:]?)([-\.]?)([\+o\*\.xs\^]?)([rgbcmykw]?)'
+			lstyle = match(p_lstyle,opt)
+			if lstyle and not flags['lstyle']:
+				flags['lstyle']=True
+				#
+				# line (continuous, dashed, ...)
+				l_1 = lstyle.group(1)
+				l_2 = lstyle.group(2)
+				if   match(r':', l_1): 	tls['line'] = '2' 	# dotted
+				elif match(r'-', l_1) and \
+					 match(r'\.',l_2): 	tls['line'] = '6'	# dashed-dotted
+				elif match(r'-', l_1) and \
+					 match(r'-', l_2): 	tls['line'] = '3'	# dashed
+				elif match(r'-', l_1):	tls['line'] = '0'	# standard
+				#
+				# marker
+				l_3 = lstyle.group(3)
+				if   match(r'\+',l_3): 	tls['marker'] = 'plus'
+				elif match(r'o', l_3):	tls['marker'] = 'circle'
+				elif match(r'\*',l_3): 	tls['marker'] = 'star'
+				elif match(r'x', l_3):	tls['marker'] = 'cross'
+				elif match(r's', l_3):	tls['marker'] = 'square'
+				elif match(r'\^',l_3):	tls['marker'] = 'triangle'
+				#
+				# color
+				l_4 = lstyle.group(4)
+				tls['color'] = cdict.setdefault(l_4,'blue')
 			#
-			# color
-			l_4 = lstyle.group(4)
-			tls['color'] = cdict.setdefault(l_4,'blue')
-		#
-		# COLOR OPTION
-		#
-		elif opt=='color':
-			tls['color'] = strip_d(optsraw.pop(0),'\'').lower()
-		#
-		# LWIDTH OPTION
-		#
-		elif opt=='linewidth' and not flags['lwidth']:
-			flags['lwidth']=True
-			opt = strip_d(optsraw.pop(0),'\'')
-			lw  = float(opt)
-			lw  = round(((lw/3)**.7)/10,2) # magic...
-			plt['lwidth'] = ' lwidth '+str(lw)+' '
-		#
-		# MSIZE OPTION
-		#
-		elif opt=='markersize' and not flags['msize']:
-			flags['msize']=True
-			opt = strip_d(optsraw.pop(0).lower(),'\'')
-			ms  = float(opt)
-			ms  = round(((ms/5)**.5)/5,2)
-			plt['msize'] = ' msize '+str(ms)+' '
-		#
-		# MFACE OPTION
-		#
-		elif opt=='markerfacecolor' and not flags['mface']:
-			flags['mface']=True
-			optsraw.pop(0) # actually we don't care what color is given
+			# COLOR OPTION
+			#
+			elif opt=='color':
+				tls['color'] = getnextarg(optsraw)
+			#
+			# LWIDTH OPTION
+			#
+			elif opt=='linewidth' and not flags['lwidth']:
+				flags['lwidth']=True
+				opt = getnextarg(optsraw)
+				lw  = float(opt)
+				lw  = round(((lw/3)**.7)/10,2) # magic...
+				plt['lwidth'] = ' lwidth '+str(lw)+' '
+			#
+			# MSIZE OPTION
+			#
+			elif opt=='markersize' and not flags['msize']:
+				flags['msize']=True
+				opt = getnextarg(optsraw)
+				ms  = float(opt)
+				ms  = round(((ms/5)**.5)/5,2)
+				plt['msize'] = ' msize '+str(ms)+' '
+			#
+			# MFACE OPTION
+			#
+			elif opt=='markerfacecolor' and not flags['mface']:
+				flags['mface']=True
+				optsraw.pop(0) # actually we don't care what color is given
 
 	# if just marker no line, if no marker no line -> lstyle 0
 	lb,mb  = bool(tls['line']),bool(tls['marker'])
@@ -226,45 +234,50 @@ def read_plot(line, t_dir, figc, plotc, sdict, cdict):
 #
 #	<in>:	line (from core part of script doc)
 #	<out>:	returns line + output line
-def read_fill(line,t_dir,figc,plotc,sdict,cdict,srdict):
+####def read_fill(line,t_dir,figc,plotc,sdict,cdict,srdict):
+def read_fill(line,figc,plotc,sdict,cdict,srdict):
 	fill = {}
 	# default options
  	fill['color'] = 'gray'
  	fill['alpha'] = False
  	# get plot arguments
- 	args = get_fargs(line,False)
+ 	args = get_fargs(line)
  	# ------------------------------------------
  	# SCRIPT -----------------------------------
  	# generate script to output appropriate data
  	# > syntax:
- 	# 	command: fill([x,fliplr(x)],[y,fliplr(y2)],'r')
- 	# 	command: fill([x,fliplr(x)],[y,fliplr(y2)],'color',[rgb(a)])
- 	# 	command: fill([x,fliplr(x)],[y,fliplr(y2)],'color','svgname','alpha',0.8)
+ 	# 	command: fill([x,fliplr(x)],[y,fliplr(y2)],...)
+ 	#				...,matlabcol|rgb|rgba
+ 	#				...,'color',svgname,'alpha'?,0.8
  	#
  	xname  = search(r'\[\s*([a-zA-Z][a-zA-Z0-9]*)\s*',args[0]).group(1)
  	yname1 = search(r'\[(.*?),\s*fliplr',args[1]).group(1)
  	yname2 = search(r',\s*fliplr\((.*?)\)\s*\]',args[1]).group(1)
- 	a=1
- 	if len(args)<3:
- 		pass
- 	elif strip_d(args[2].lower(),'\'')=='color':
- 		rgbsearch = search(r'\[\s*([0-9]*\.?[0-9]*)\s*,?\s*([0-9]*\.?[0-9]*)\s*,?\s*([0-9]*\.?[0-9]*)(.*)',args[3])
- 		if rgbsearch:
- 			r,g,b=rgbsearch.group(1,2,3)
- 			alphasearch = search(r'\s*([0-9]*\.?[0-9]*)',rgbsearch.group(4))
- 			a = 1 if not alphasearch else alphasearch.group(1)
- 			fill['color']='rgba(%s,%s,%s,%s)'%(r,g,b,a)
- 		else:
- 			args = rem_esp(args)
- 			# check if alpha
- 			if len(args)>4 and strip_d(args[4].lower(),'\'')=='alpha':
- 				r,g,b = srdict.setdefault(strip_d(args[3].lower(),'\''),(128,128,128))
- 				a     = float(strip_d(args[5],'\''))*100
- 				fill['color']='rgba255(%i,%i,%i,%f)'%(r,g,b,a)
- 			else:
- 				fill['color']=strip_d(args[3],'\'')
- 	else:
- 		fill['color']=cdict.setdefault(args[2],'gray')
+ 	a=1 # alpha
+ 	if len(args)>2:
+		optsraw = args[2:]
+		while optsraw:
+			opt = getnextarg(optsraw)
+			if opt in ['r','g','b','c','m','y','k','w']:
+				fill['color']=cdict[opt]
+			elif opt=='color':
+	 			opt  = getnextarg(optsraw) # colname
+	 			# option given form [r,g,b,a?]
+				rgbsearch  = search(r'\[\s*([0-9]*\.?[0-9]*)\s*,?\s*([0-9]*\.?[0-9]*)\s*,?\s*([0-9]*\.?[0-9]*)(.*)',opt)
+				if rgbsearch:
+		 			r,g,b=rgbsearch.group(1,2,3)
+		 			alphasearch = search(r'\s*([0-9]*\.?[0-9]*)',rgbsearch.group(4))
+		 			a = 1 if not alphasearch else alphasearch.group(1)
+		 			fill['color']='rgba(%s,%s,%s,%s)'%(r,g,b,a)
+	 			elif optsraw and strip_d(optsraw[0].lower(),'\'')=='alpha': # col->rgba
+	 				optsraw.pop(0)
+	 				opta  = getnextarg(optsraw)
+	 				#print opt
+	 				r,g,b = srdict.setdefault(opt,(128,128,128))
+	 				a     = float(opta)*100
+	 				fill['color']='rgba255(%i,%i,%i,%f)'%(r,g,b,a)
+	 			else: # just colname
+	 				fill['color']=opt 	
  	#
  	if not a==1: fill['alpha']=True
  	#
@@ -276,72 +289,91 @@ def read_fill(line,t_dir,figc,plotc,sdict,cdict,srdict):
   	vecy1  = 'y1__%s'%sdict['vec']
   	vecy2  = 'y2__%s'%sdict['vec']
  	script+= 'c__ = %s%s\n'%(sdict['cbind']%(sdict['cbind']%(vecx,vecy1),vecy2),sdict['EOL'])
-	dfn    = '%sdatfill%i_%i.dat'%(t_dir,figc,plotc)
+	####dfn    = '%sdatfill%i_%i.dat'%(t_dir,figc,plotc)
+	dfn    = '__datfill%i_%i.dat'%(figc,plotc)
   	script+= '%s%s\n'%(sdict['writevar']%(dfn,'c__'),sdict['EOL'])
  	#
  	fill['script'] = script
  	return fill
 #
 # +++++++++++++++++++++++++++++++++++++++++++
-# READ BAR:
-#	read a 'bar(...)' line, extracts script
+# READ HIST:
+#	read a 'hist(...)' line, extracts script
 #	code to output data, generates GLE bloc
 #	to input in GLE figure
 #
 #	<in>:	line (from core part of script doc)
 #	<out>:	returns line + output line
-def read_bar(line,t_dir,figc,plotc,sdict,cdict,srdict):
-	fill = {}
+####def read_hist(line,t_dir,figc,plotc,sdict,cdict,srdict):
+def read_hist(line,figc,plotc,sdict,cdict,srdict):
+	hist = {}
 	# default options
- 	fill['color'] = 'gray'
- 	fill['alpha'] = False
+ 	hist['edgecolor'] = 'white'
+ 	hist['facecolor'] = 'cornflowerblue'
+ 	hist['alpha'] 	  = False
+ 	hist['N']		  = 1
+ 	hist['width'] 	  = 1
  	# get plot arguments
- 	args = get_fargs(line,False)
+ 	args = get_fargs(line)
  	# ------------------------------------------
  	# SCRIPT -----------------------------------
  	# generate script to output appropriate data
  	# > syntax:
- 	# 	command: fill([x,fliplr(x)],[y,fliplr(y2)],'r')
- 	# 	command: fill([x,fliplr(x)],[y,fliplr(y2)],'color',[rgb(a)])
- 	# 	command: fill([x,fliplr(x)],[y,fliplr(y2)],'color','svgname','alpha',0.8)
+ 	# 	command: hist(x,...)
+ 	#	 			...,'Normalization','count|countdensity|probability|pdf|cumcount|cdf'
+ 	#				...,'Facecolor',svgcol|matlabcol|rgb|rgba,'Alpha'?,0.8
+ 	#				...,'Edgecolor',svgcol|matlabcol|rgb
  	#
- 	xname  = search(r'\[\s*([a-zA-Z][a-zA-Z0-9]*)\s*',args[0]).group(1)
- 	yname1 = search(r'\[(.*?),\s*fliplr',args[1]).group(1)
- 	yname2 = search(r',\s*fliplr\((.*?)\)\s*\]',args[1]).group(1)
- 	a=1
- 	if len(args)<3:
- 		pass
- 	elif strip_d(args[2].lower(),'\'')=='color':
- 		rgbsearch = search(r'\[\s*([0-9]*\.?[0-9]*)\s*,?\s*([0-9]*\.?[0-9]*)\s*,?\s*([0-9]*\.?[0-9]*)(.*)',args[3])
- 		if rgbsearch:
- 			r,g,b=rgbsearch.group(1,2,3)
- 			alphasearch = search(r'\s*([0-9]*\.?[0-9]*)',rgbsearch.group(4))
- 			a = 1 if not alphasearch else alphasearch.group(1)
- 			fill['color']='rgba(%s,%s,%s,%s)'%(r,g,b,a)
- 		else:
- 			args = rem_esp(args)
- 			# check if alpha
- 			if len(args)>4 and strip_d(args[4].lower(),'\'')=='alpha':
- 				r,g,b = srdict.setdefault(strip_d(args[3].lower(),'\''),(128,128,128))
- 				a     = float(strip_d(args[5],'\''))*100
- 				fill['color']='rgba255(%i,%i,%i,%f)'%(r,g,b,a)
- 			else:
- 				fill['color']=strip_d(args[3],'\'')
- 	else:
- 		fill['color']=cdict.setdefault(args[2],'gray')
- 	#
- 	if not a==1: fill['alpha']=True
+ 	xname  = strip_d(args.pop(0),'\'')
+ 	a=1 # alpha
+ 	if args:
+	 	optsraw = args
+	 	while optsraw:
+	 		opt = getnextarg(optsraw)
+	 		#
+	 		# NEEDS WORKING -- NORMALIZATION THING
+	 		# 
+	 		if opt in ['r','g','b','c','m','y','k','w']:
+				hist['facecolor']=cdict[opt]
+			elif opt in ['color','facecolor']:
+	 			opt  = getnextarg(optsraw) # colname
+	 			# option given form [r,g,b,a?]
+				rgbsearch  = search(r'\[\s*([0-9]*\.?[0-9]*)\s*,?\s*([0-9]*\.?[0-9]*)\s*,?\s*([0-9]*\.?[0-9]*)(.*)',opt)
+				if rgbsearch:
+		 			r,g,b=rgbsearch.group(1,2,3)
+		 			alphasearch = search(r'\s*([0-9]*\.?[0-9]*)',rgbsearch.group(4))
+		 			a = 1 if not alphasearch else alphasearch.group(1)
+		 			hist['facecolor']='rgba(%s,%s,%s,%s)'%(r,g,b,a)
+	 			elif optsraw and strip_d(optsraw[0].lower(),'\'')=='alpha': # col->rgba
+	 				optsraw.pop(0)
+	 				opta  = getnextarg(optsraw)
+	 				#print opt
+	 				r,g,b = srdict.setdefault(opt,(128,128,128))
+	 				a     = float(opta)*100
+	 				hist['facecolor']='rgba255(%i,%i,%i,%f)'%(r,g,b,a)
+	 			else: # just colname
+	 				hist['facecolor']=opt
+	 		elif opt=='edgecolor':
+	 			opt = getnextarg(optsraw) # colname, no transp
+	 			# option given form [r,g,b,a?]
+				rgbsearch  = search(r'\[\s*([0-9]*\.?[0-9]*)\s*,?\s*([0-9]*\.?[0-9]*)\s*,?\s*([0-9]*\.?[0-9]*)(.*)',opt)
+				if rgbsearch:
+		 			r,g,b=rgbsearch.group(1,2,3)
+		 			hist['edgecolor']='rgba(%s,%s,%s,%s)'%(r,g,b,a)
+	 			else: # just colname
+	 				hist['edgecolor']=opt
+	#
+ 	if not a==1: hist['alpha']=True
  	#
 	script = 'x__  = %s%s\n'%(xname ,sdict['EOL'])
-	script+= 'y1__ = %s%s\n'%(yname1,sdict['EOL'])
-	script+= 'y2__ = %s%s\n'%(yname2,sdict['EOL'])
   	#
+  	# NEEDS WORKING, NOT JUST VEC IT, IF MULTI COLUMN THEN STACK
+  	# 
   	vecx   = 'x__%s' %sdict['vec']
-  	vecy1  = 'y1__%s'%sdict['vec']
-  	vecy2  = 'y2__%s'%sdict['vec']
- 	script+= 'c__ = %s%s\n'%(sdict['cbind']%(sdict['cbind']%(vecx,vecy1),vecy2),sdict['EOL'])
-	dfn    = t_dir+"datfill"+str(figc)+'_'+str(plotc)+".dat"
+ 	script+= 'c__ = %s%s\n'%(vecx,sdict['EOL'])
+	####dfn    = "%sdathist%i_%i.dat"%(t_dir,figc,plotc)
+	dfn    = "__dathist%i_%i.dat"%(figc,plotc)
   	script+= "%s%s\n"%(sdict['writevar']%(dfn,'c__'),sdict['EOL'])
  	#
- 	fill['script'] = script
- 	return fill
+ 	hist['script'] = script
+ 	return hist

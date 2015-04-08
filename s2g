@@ -7,6 +7,7 @@ from subprocess import check_call
 from re import search, sub, match
 from shutil import rmtree, copy
 from glob import iglob
+from os import remove, listdir
 from os.path import splitext, join, isfile
 from numpy import floor
 from time import time
@@ -49,10 +50,11 @@ fname2 	   = fname.split('/')
 fname2 	   = fname2[-1] 		# only name of file
 gname  	   = fname+'.gle'
 #
-t_dir = '_%s_tmpdir/'%fname
-s_tmp = t_dir+'script_tmp'
+#####t_dir = '_%s_tmpdir/'%fname
+#####s_tmp = t_dir+'script_tmp'
+s_tmp = '__%s_script_tmp'%fname
 # create folder
-check_call('mkdir -p '+t_dir,shell=True)
+####check_call('mkdir -p '+t_dir,shell=True)
 #
 figc    = 0  # number of figures
 plotc   = 0  # number of plots for one figure
@@ -60,14 +62,14 @@ figs    = []
 lstyles = [] # list of lstyles in curfig
 flags   = {'holdon':False}
 #
-newfig   = lambda figc: glec.gle('%s%s_plot%i'%(t_dir,fname2,figc))
-getarg1  = lambda l,re: s2gf.strip_d(s2gf.get_fargs(l,re)[0],'\'')
+####newfig   = lambda figc: glec.gle('%s%s_plot%i'%(t_dir,fname2,figc))
+newfig = lambda figc: glec.gle('__%s_plot%i'%(fname2,figc))
 #
 #
 # script dictionary for the different languages
 # >> JULIA
 if fext == '.jl':
-	script_dict_JL = {
+	script_dict = {
 		'append'	: 'include',
 		'writevar'	: 'writecsv(\"%s\",%s)',
 		'vec'		: '[:]',
@@ -131,7 +133,7 @@ with open(rname,'r') as sf_orig:
 				sf_tmp.write('#'+l)
 			# ---------
 			# PLOT LINE
-			elif match(r'(?:plot|semilog[xy]|stem|loglog|fill|fillbetween|bar)$',marker):
+			elif match(r'(?:plot|semilog[xy]|stem|loglog|fill|fillbetween|hist)$',marker):
 				# ------------------
 				# <- NEW GLE FIG? ->
 				pre_figc = figc
@@ -149,11 +151,13 @@ with open(rname,'r') as sf_orig:
 				# <- PLOT ACTIONS ->
 				if marker in ['plot','semilogx','semilogy','stem','loglog']:
 					# structify: extract code and options
-					plt = s2gf.read_plot(l,t_dir,figc,plotc,script_dict,col_dict)
+					####plt = s2gf.read_plot(l,t_dir,figc,plotc,script_dict,col_dict)
+					plt = s2gf.read_plot(l,figc,plotc,script_dict,col_dict)
 					# -> write to temp script file
 					sf_tmp.write(plt['script'])
 					# -> write to temp gle file
-					block = 'data "datplot%i_%i.dat" d%i=c1,c2\n'%(figc,plotc,plotc)
+					####block = 'data "datplot%i_%i.dat" d%i=c1,c2\n'%(figc,plotc,plotc)
+					block = 'data "__datplot%i_%i.dat" d%i=c1,c2\n'%(figc,plotc,plotc)
 					block+= 'd%i'%plotc+									\
 								' impulses '*bool(match(r'stem',marker))+ 	\
 								plt['lstyle']+								\
@@ -165,37 +169,49 @@ with open(rname,'r') as sf_orig:
 					elif match(r'loglog',marker): 	  fig.axopt+='xaxis log\nyaxis log\n'
 				elif marker in ['fill','fillbetween']:
 					if marker == 'fillbetween':
-						fbargs = s2gf.get_fargs(l,False)
+						fbargs = s2gf.get_fargs(l)
 		 				l      = 'fill([%s,foo],[%s,fliplr(%s)],%s)'%(fbargs[0],fbargs[1],fbargs[2],s2gf.strip_d(str(fbargs[3:]),r'^\[|\]$'))
 		 				l      = sub('"','',l)
 		 			#
-					fill = s2gf.read_fill(l,t_dir,figc,plotc,script_dict,col_dict,svg2rgb_dict)
+					####fill = s2gf.read_fill(l,t_dir,figc,plotc,script_dict,col_dict,svg2rgb_dict)
+					fill = s2gf.read_fill(l,figc,plotc,script_dict,col_dict,svg2rgb_dict)
 					# -> write to temp script file
 					sf_tmp.write(fill['script'])
 					# -> write to temp gle file
-					block    = 'data "datfill%i_%i.dat" d%i=c1,c2 d%i=c1,c3\n'%(figc,plotc,plotc,plotc+1)
+					####block    = 'data "datfill%i_%i.dat" d%i=c1,c2 d%i=c1,c3\n'%(figc,plotc,plotc,plotc+1)
+					block    = 'data "__datfill%i_%i.dat" d%i=c1,c2 d%i=c1,c3\n'%(figc,plotc,plotc,plotc+1)
 					block   += 'fill d%i,d%i color %s'%(plotc,plotc+1,fill['color'])
 					fig.plot+= block
-					fig.trsp = fill['alpha']
-				elif marker == 'bar':
-					continue
+					fig.trsp = fig.trsp or fill['alpha']
+				elif marker == 'hist':
+					####hist = s2gf.read_hist(l,t_dir,figc,plotc,script_dict,col_dict,svg2rgb_dict)
+					hist = s2gf.read_hist(l,figc,plotc,script_dict,col_dict,svg2rgb_dict)
+					# -> write to temp script file
+					sf_tmp.write(hist['script'])
+					# -> write to temp gle file
+					####block    = 'data "dathist%i_%i.dat"\n'%(figc,plotc)
+					block    = 'data "__dathist%i_%i.dat"\n'%(figc,plotc)
+					block  	+= 'let d%i = hist d%i\n'%(plotc+1,plotc)
+					block   += 'bar d%i color %s fill %s'%(plotc+1,hist['edgecolor'],hist['facecolor'])
+					fig.plot+= block
+					fig.trsp = fig.trsp or hist['alpha']
  			# -------------------------
  			# AXIS LINES (pass in temp)
  			# (atm, ignore fontsize)
  			elif match(r'(?:[xy]label|title)$',marker):
- 				al = getarg1(l,False)
+ 				al = s2gf.getarg1(l)
  				marker = '' if (marker=='title') else marker[0]
  				if no_tex:
  					fig.axopt+=marker+'title "%s"\n'%sub(r'\\','/',al)
  				else:
  					fig.axopt+=marker+'title "\\tex{%s}"\n'%sub('%','\%',al)
 			elif match(r'(?:[xy]lim)$',marker):
- 				al  = getarg1(l,False)
+ 				al  = s2gf.getarg1(l)
  				al_ = s2gf.array_x(al)
  				fig.axopt+=marker[0]+'axis min '+al_[0]+' max '+al_[1]+'\n'
  			elif marker=='axis':
  				if match(r'axis\(',l):
-	 				al  = getarg1(l,False)
+	 				al  = s2gf.getarg1(l)
 	 				al_ = s2gf.array_x(al)
 	 				block = 'xaxis min '+al_[0]+' max '+al_[1]+'\n'
 	 				block+= 'yaxis min '+al_[2]+' max '+al_[3]+'\n'
@@ -211,7 +227,7 @@ with open(rname,'r') as sf_orig:
 				# -------------
 				# <- set GCA ->
 				if match(r'set\(gca',l):
-					args = s2gf.get_fargs(l,False)[1:] # False -> leave spaces
+					args = s2gf.get_fargs(l)[1:] # False -> leave spaces
 					while args:
 						arg = s2gf.strip_d(args.pop(0).lower(),'\'').upper()
 						if match(r'[XY]TICK$',arg):
@@ -259,7 +275,7 @@ with open(rname,'r') as sf_orig:
 	 		# ------------
 	 		# LEGEND LINES
 			elif marker=='legend':
-				leg_stack = s2gf.get_fargs(l,False)
+				leg_stack = s2gf.get_fargs(l)
 				leg_c     = 0
 				while leg_stack:
 					leg_i_str = s2gf.strip_d(leg_stack.pop(0),'\'')
@@ -332,8 +348,16 @@ else: # just copy gle files
 
 # CLEANUP
 if not devmode:
-	if png_out:
-		copy_xt("*.png")
-	else:
-		copy_xt("*.pdf")
-	rmtree(t_dir)
+	files = listdir('.')
+	for f in files:
+		if f.startswith('__'):
+			remove(f)
+# 	remove("__*.dat")
+# 	remove("__*.gle")
+# 	remove("__*%s"%fext)
+# # if not devmode:
+# # 	if png_out:
+# # 		copy_xt("*.png")
+# # 	else:
+# # 		copy_xt("*.pdf")
+# # 	rmtree(t_dir)
