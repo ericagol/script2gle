@@ -1,0 +1,5 @@
+plot(x,y,'-','color','DarkOrchid')
+set(gca,'xtick',[-1 0 1])
+set(gca,'xticklabel',['-1','0','1'])
+set(gca,'ytick',0:.5:1)
+set(gca,'yticklabel',['0','1/2','1'])

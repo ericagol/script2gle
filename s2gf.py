@@ -143,7 +143,7 @@ def read_plot(line, figc, plotc, sdict, cdict):
 	vecy   = 'y__%s'%sdict['vec']
 	script+= 'c__ = %s%s\n'%(sdict['cbind']%(vecx,vecy),sdict['EOL'])
 	####dfn    = "%sdatplot%i_%i.dat"%(t_dir,figc,plotc)
-	dfn    = "__datplot%i_%i.dat"%(figc,plotc)
+	dfn    = ".__datplot%i_%i.dat"%(figc,plotc)
 	script+= "%s%s\n"%(sdict['writevar']%(dfn,'c__'),sdict['EOL'])
 	#
 	plt['script'] = script
@@ -290,7 +290,7 @@ def read_fill(line,figc,plotc,sdict,cdict,srdict):
   	vecy2  = 'y2__%s'%sdict['vec']
  	script+= 'c__ = %s%s\n'%(sdict['cbind']%(sdict['cbind']%(vecx,vecy1),vecy2),sdict['EOL'])
 	####dfn    = '%sdatfill%i_%i.dat'%(t_dir,figc,plotc)
-	dfn    = '__datfill%i_%i.dat'%(figc,plotc)
+	dfn    = '.__datfill%i_%i.dat'%(figc,plotc)
   	script+= '%s%s\n'%(sdict['writevar']%(dfn,'c__'),sdict['EOL'])
  	#
  	fill['script'] = script
@@ -372,7 +372,7 @@ def read_hist(line,figc,plotc,sdict,cdict,srdict):
   	vecx   = 'x__%s' %sdict['vec']
  	script+= 'c__ = %s%s\n'%(vecx,sdict['EOL'])
 	####dfn    = "%sdathist%i_%i.dat"%(t_dir,figc,plotc)
-	dfn    = "__dathist%i_%i.dat"%(figc,plotc)
+	dfn    = ".__dathist%i_%i.dat"%(figc,plotc)
   	script+= "%s%s\n"%(sdict['writevar']%(dfn,'c__'),sdict['EOL'])
  	#
  	hist['script'] = script

@@ -2,13 +2,11 @@
 # coding=utf-8
 #
 # GENERAL MODULES
-from sys import argv, path
+from sys import argv
 from subprocess import check_call
 from re import search, sub, match
-from shutil import rmtree, copy
-from glob import iglob
-from os import remove, listdir
-from os.path import splitext, join, isfile
+from os import remove, listdir, rename
+from os.path import splitext, join
 from numpy import floor
 from time import time
 # OWN MODULES
@@ -50,11 +48,8 @@ fname2 	   = fname.split('/')
 fname2 	   = fname2[-1] 		# only name of file
 gname  	   = fname+'.gle'
 #
-#####t_dir = '_%s_tmpdir/'%fname
-#####s_tmp = t_dir+'script_tmp'
-s_tmp = '__%s_script_tmp'%fname
+s_tmp = '.__%s_script_tmp'%fname
 # create folder
-####check_call('mkdir -p '+t_dir,shell=True)
 #
 figc    = 0  # number of figures
 plotc   = 0  # number of plots for one figure
@@ -62,8 +57,7 @@ figs    = []
 lstyles = [] # list of lstyles in curfig
 flags   = {'holdon':False}
 #
-####newfig   = lambda figc: glec.gle('%s%s_plot%i'%(t_dir,fname2,figc))
-newfig = lambda figc: glec.gle('__%s_plot%i'%(fname2,figc))
+newfig = lambda figc: glec.gle('.__%s_plot%i'%(fname2,figc))
 #
 #
 # script dictionary for the different languages
@@ -151,13 +145,11 @@ with open(rname,'r') as sf_orig:
 				# <- PLOT ACTIONS ->
 				if marker in ['plot','semilogx','semilogy','stem','loglog']:
 					# structify: extract code and options
-					####plt = s2gf.read_plot(l,t_dir,figc,plotc,script_dict,col_dict)
 					plt = s2gf.read_plot(l,figc,plotc,script_dict,col_dict)
 					# -> write to temp script file
 					sf_tmp.write(plt['script'])
 					# -> write to temp gle file
-					####block = 'data "datplot%i_%i.dat" d%i=c1,c2\n'%(figc,plotc,plotc)
-					block = 'data "__datplot%i_%i.dat" d%i=c1,c2\n'%(figc,plotc,plotc)
+					block = 'data ".__datplot%i_%i.dat" d%i=c1,c2\n'%(figc,plotc,plotc)
 					block+= 'd%i'%plotc+									\
 								' impulses '*bool(match(r'stem',marker))+ 	\
 								plt['lstyle']+								\
@@ -173,24 +165,20 @@ with open(rname,'r') as sf_orig:
 		 				l      = 'fill([%s,foo],[%s,fliplr(%s)],%s)'%(fbargs[0],fbargs[1],fbargs[2],s2gf.strip_d(str(fbargs[3:]),r'^\[|\]$'))
 		 				l      = sub('"','',l)
 		 			#
-					####fill = s2gf.read_fill(l,t_dir,figc,plotc,script_dict,col_dict,svg2rgb_dict)
 					fill = s2gf.read_fill(l,figc,plotc,script_dict,col_dict,svg2rgb_dict)
 					# -> write to temp script file
 					sf_tmp.write(fill['script'])
 					# -> write to temp gle file
-					####block    = 'data "datfill%i_%i.dat" d%i=c1,c2 d%i=c1,c3\n'%(figc,plotc,plotc,plotc+1)
-					block    = 'data "__datfill%i_%i.dat" d%i=c1,c2 d%i=c1,c3\n'%(figc,plotc,plotc,plotc+1)
+					block    = 'data ".__datfill%i_%i.dat" d%i=c1,c2 d%i=c1,c3\n'%(figc,plotc,plotc,plotc+1)
 					block   += 'fill d%i,d%i color %s'%(plotc,plotc+1,fill['color'])
 					fig.plot+= block
 					fig.trsp = fig.trsp or fill['alpha']
 				elif marker == 'hist':
-					####hist = s2gf.read_hist(l,t_dir,figc,plotc,script_dict,col_dict,svg2rgb_dict)
 					hist = s2gf.read_hist(l,figc,plotc,script_dict,col_dict,svg2rgb_dict)
 					# -> write to temp script file
 					sf_tmp.write(hist['script'])
 					# -> write to temp gle file
-					####block    = 'data "dathist%i_%i.dat"\n'%(figc,plotc)
-					block    = 'data "__dathist%i_%i.dat"\n'%(figc,plotc)
+					block    = 'data ".__dathist%i_%i.dat"\n'%(figc,plotc)
 					block  	+= 'let d%i = hist d%i\n'%(plotc+1,plotc)
 					block   += 'bar d%i color %s fill %s'%(plotc+1,hist['edgecolor'],hist['facecolor'])
 					fig.plot+= block
@@ -239,7 +227,7 @@ with open(rname,'r') as sf_orig:
 								num = int(floor(float(l)-float(f))+1)
 								fig.axopt+='%saxis ftick %s dticks 1 nticks %i\n'%(arg[0],f,num)
 							elif nc==2: # format a:b:c
-								f,d,l = match(r'\[?\s*(.+)\s*:\s*(.+)\s*:\s*(.+)\s*\]?',ticks).group(1,2,3),
+								f,d,l = match(r'\[?\s*(.+?)\s*:\s*(.+?)\s*:\s*(.+?)\s*\]?',ticks).group(1,2,3)
 								num   = int(floor((float(l)-float(f))/float(d)+1))
 								fig.axopt+='%saxis ftick %s dticks %s nticks %i\n'%(arg[0],f,d,num)
 							else: # a or [a b c]
@@ -299,7 +287,8 @@ with open(rname,'r') as sf_orig:
 			# ------------------------
 	 		# RUN LINES (ext. scripts)
 			elif marker==script_dict['append']:
-				scriptname = s2gf.strip_d(s2gf.get_fargs(l)[0],'\"')
+				scriptname = s2gf.strip_d(s2gf.getarg1(l),'\"')
+				print scriptname
 				print 'Appending script <', scriptname, '>...'
 				with open(scriptname,'r') as script:
 					# prepend the script to stack of lines
@@ -315,13 +304,6 @@ with open(rname,'r') as sf_orig:
 ###########################
 # COMPILATION #############
 ###########################
-# Short side functions
-def copy_xt(ext):
-	global t_dir
-	files = iglob(join(t_dir,ext))
-	for file in files:
-		if isfile(file): copy(file,t_dir+'/..')
-
 # RUN SCRIPT
 try:
 	start = time()
@@ -344,20 +326,13 @@ if not no_gleplot:
 	print 'Calling+executing GLE :: ',delta
 else: # just copy gle files
 	for f in figs: f.writefile()
-	copy_xt("*.gle")
 
 # CLEANUP
 if not devmode:
 	files = listdir('.')
 	for f in files:
-		if f.startswith('__'):
-			remove(f)
-# 	remove("__*.dat")
-# 	remove("__*.gle")
-# 	remove("__*%s"%fext)
-# # if not devmode:
-# # 	if png_out:
-# # 		copy_xt("*.png")
-# # 	else:
-# # 		copy_xt("*.pdf")
-# # 	rmtree(t_dir)
+		if f.startswith('.__'):
+			if f.endswith('.pdf') or f.endswith('.png'):
+				rename(f,f.strip('.__'))
+			else:
+				remove(f)
