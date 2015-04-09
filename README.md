@@ -11,10 +11,12 @@ The rough idea is to use `Matlab/Octave` style syntax for plots whilst generatin
 Roughly, the workflow is as follows:
 
 1. "Parse" the script (.jl or .m),
-2. Remove the lines where plotting is done following `Matlab/Octave` syntax and write it in corresponding `.gle` code, replace these lines by `write` lines (`.dat` output) (*in tmp folder*)
-3. Run the script, `.dat` files are generated (*in tmp folder*), 
-4. Run GLE, `.pdf` or `.png` files are generated (*in tmp folder*),
-5. Copy relevant files to the original directory.
+2. Remove the lines where plotting is done following `Matlab/Octave` syntax and write it in corresponding `.gle` code, replace these lines by `write` lines (for `.dat` output) in a temporary script file,
+3. Run the temporary script: `.dat` files are generated
+4. Run GLE: `.pdf` or `.png` files are generated
+5. Remove temporary files (unless option `-dev` is chosen)
+
+**Rem**: if `-dev` option is chosen, one can have a look at the temporary files that have been created (useful for debugging), the temporary files are hidden by default with names starting with `.__`, if you can't see them use `ls -a` in the appropriate directory.
 
 ## Requirements
 
@@ -100,3 +102,5 @@ fillbetween(x,exp(-x.^2/2),exp(-abs(x)),'color','palegreen','alpha',0.7)
 which should generate the figure below:
 
 ![smalltest2.m](/examples/octavematlab/smalltest2_plot1_g.png);
+
+**Remark**: as you may have realized, `fillbetween` is not part of Matlab syntax, it's just a useful extension here, and the idea is to have a `Matlab-like` syntax but without restriction for a bit of syntactic sugar (remember, this does not have the ambition to be an award winning software (...) but rather to be a useful hack).
