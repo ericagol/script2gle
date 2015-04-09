@@ -32,25 +32,25 @@ If you intend to use transparency (`fill` command), then GLE needs to be able to
 With `Julia` go to the `examples/julia` directory and run
 
 ```Bash
-../../s2g ex_basic.jl
+../../s2g ex_basic.jl -tex
 ```
 
 With `Octave/Matlab` go to the `examples/octavematlab`
 
 ```Bash
-../../s2g ex_axis.m
+../../s2g ex_axis.m -tex
 ```
 
-It takes a few seconds to compile the figure since it must run `pdflatex` to generate the labels etc. Note that there is also an option without TeX to have a quick look at figures (or if your figure has no need for TeX): running `s2g` with option `-notex` or (equivalently) `-draft` will escape the TeX and just quickly compile the figure:
+It takes a few seconds to compile the figure since it must run `pdflatex` to generate the labels etc. Note that by default (without option), TeX is disabled so that one can have a quick look at figures (or if your figure has no need for TeX):
 
 ```Bash
-../../s2g ex_basic.jl -notex
+../../s2g ex_basic.jl
 ```
 
 If you want a png output, use the option `-png` eg:
 
 ```Bash
-../../s2g ex_basic.jl -notex -png
+../../s2g ex_basic.jl -tex -png
 ```
 
 ## Example in Octave/Matlab
@@ -74,7 +74,7 @@ legend('$\propto\mathcal N(0,1)$','$\propto$ Laplace','Location','southeast')
 in your terminal, in the same directory with `$PATHS2G` the path to the executable `s2g`,
 
 ```Bash
-$PATHS2G/s2g smalltest.m -png
+$PATHS2G/s2g smalltest.m -tex -png
 ```
 
 which should generate the figure below:
