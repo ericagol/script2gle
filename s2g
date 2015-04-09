@@ -20,7 +20,7 @@ from s2gd import *
 devmode    = False # else-> cleanup temp folders
 no_gleplot = False # does not compile GLE files
 no_octave  = False # uses matlab instead of octave
-no_tex     = False # for quick graph 
+no_tex     = True  # for quick graph 
 png_out    = False # output in png instead of pdf
 png_resol  = ''
 if len(argv)>2:
@@ -34,8 +34,8 @@ if len(argv)>2:
 		elif bool(match(r'-png',arg)):
 			png_out   = True
 			png_resol = '300'
-		elif bool(match(r'-notex|-draft',arg)):
-			no_tex = True
+		elif bool(match(r'-tex',arg)):
+			no_tex = False
 		else:
 			print 'Ignoring unrecognized arg.: <'+arg+'>'
 #
@@ -67,8 +67,13 @@ if fext == '.jl':
 		'append'	: 'include',
 		'writevar'	: 'writecsv(\"%s\",%s)',
 		'vec'		: '[:]',
+		'minvec'	: 'minimum(%s)',
+		'maxvec'	: 'maximum(%s)',
+		'lenvec'	: 'length(%s)',
+		'autobins'  : '({0}<10)*{0}+(10<={0}<30)*10+(30<={0})*int(round(sqrt({0})))', # with .format not %
 		'EOL'		: '',
 		'cbind' 	: '[%s %s]',
+		'rbind'		: '[%s;%s]',
 		'span' 		: '1:prod(size(%s))'
 	}
 	caller = 'julia'
@@ -78,8 +83,13 @@ elif fext == '.m':
 		'append'	: 'run',
 		'writevar'	: 'save(\'-ascii\',\'%s\',\'%s\')',
 		'vec'		: '(:)',
+		'minvec'	: 'min(%s)',
+		'maxvec'	: 'max(%s)',
+		'lenvec' 	: 'length(%s)',
+		'autobins'	: '({0}<10)*{0}+(10<={0} && {0}<30)*10+(30<={0})*round(sqrt({0}))',
 		'EOL'		: ';',
 		'cbind'		: '[%s %s]',
+		'rbind'		: '[%s;%s]',
 		'span'		: '1:prod(size(%s))'
 	}
 	if no_octave:
@@ -127,7 +137,7 @@ with open(rname,'r') as sf_orig:
 				sf_tmp.write('#'+l)
 			# ---------
 			# PLOT LINE
-			elif match(r'(?:plot|semilog[xy]|stem|loglog|fill|fillbetween|hist)$',marker):
+			elif match(r'(?:plot|semilog[xy]|stem|loglog|fill|fillbetween|hist|histogram)$',marker):
 				# ------------------
 				# <- NEW GLE FIG? ->
 				pre_figc = figc
@@ -173,14 +183,27 @@ with open(rname,'r') as sf_orig:
 					block   += 'fill d%i,d%i color %s'%(plotc,plotc+1,fill['color'])
 					fig.plot+= block
 					fig.trsp = fig.trsp or fill['alpha']
-				elif marker == 'hist':
+				elif marker in ['hist','histogram']:
 					hist = s2gf.read_hist(l,figc,plotc,script_dict,col_dict,svg2rgb_dict)
 					# -> write to temp script file
 					sf_tmp.write(hist['script'])
 					# -> write to temp gle file
-					block    = 'data ".__dathist%i_%i.dat"\n'%(figc,plotc)
-					block  	+= 'let d%i = hist d%i\n'%(plotc+1,plotc)
-					block   += 'bar d%i color %s fill %s'%(plotc+1,hist['edgecolor'],hist['facecolor'])
+					block  = ''
+					block += 'data ".__dathist%i_%i_side.dat"\n'%(figc,plotc)
+					block += 'xmin_  = datayvalue(d%i,1)\n'%plotc
+					block += 'xmax_  = datayvalue(d%i,2)\n'%plotc
+					block += 'nbins_ = datayvalue(d%i,3)\n'%plotc
+					#
+					block   += 'data ".__dathist%i_%i.dat"\n'%(figc,plotc)
+					plotc   += 1
+					block   += 'N__ = ndata(d%i)\n'%plotc
+					block   += 'width_ = (xmax_-xmin_)/%s\n'%('nbins_')
+					norm     = '1'
+					if hist['norm']=='probability': norm = '1.0/N__'
+					##
+					block   += 'let d%i = hist d%i from xmin_ to xmax_ bins %s\n'%(plotc+1,plotc,'nbins_')
+					block   += 'let d%i = d%i*%s\n'%(plotc+1,plotc+1,norm)
+					block   += 'bar d%i color %s fill %s width %s\n'%(plotc+1,hist['edgecolor'],hist['facecolor'],'width_')
 					fig.plot+= block
 					fig.trsp = fig.trsp or hist['alpha']
  			# -------------------------
@@ -328,11 +351,10 @@ else: # just copy gle files
 	for f in figs: f.writefile()
 
 # CLEANUP
-if not devmode:
-	files = listdir('.')
-	for f in files:
-		if f.startswith('.__'):
-			if f.endswith('.pdf') or f.endswith('.png'):
-				rename(f,f.strip('.__'))
-			else:
-				remove(f)
+files = listdir('.')
+for f in files:
+	if f.startswith('.__'):
+		if f.endswith('.pdf') or f.endswith('.png'):
+			rename(f,f.strip('.__'))
+		else:
+			if not devmode: remove(f)

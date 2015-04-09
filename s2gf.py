@@ -112,7 +112,6 @@ def array_x(s):
 #
 #	<in>:	line (from core part of script doc)
 #	<out>:	returns line + output line
-####def read_plot(line, t_dir, figc, plotc, sdict, cdict):
 def read_plot(line, figc, plotc, sdict, cdict):
 	plt,tls  = {},{}
 	# default options
@@ -142,7 +141,6 @@ def read_plot(line, figc, plotc, sdict, cdict):
 	vecx   = 'x__%s'%sdict['vec']
 	vecy   = 'y__%s'%sdict['vec']
 	script+= 'c__ = %s%s\n'%(sdict['cbind']%(vecx,vecy),sdict['EOL'])
-	####dfn    = "%sdatplot%i_%i.dat"%(t_dir,figc,plotc)
 	dfn    = ".__datplot%i_%i.dat"%(figc,plotc)
 	script+= "%s%s\n"%(sdict['writevar']%(dfn,'c__'),sdict['EOL'])
 	#
@@ -234,7 +232,6 @@ def read_plot(line, figc, plotc, sdict, cdict):
 #
 #	<in>:	line (from core part of script doc)
 #	<out>:	returns line + output line
-####def read_fill(line,t_dir,figc,plotc,sdict,cdict,srdict):
 def read_fill(line,figc,plotc,sdict,cdict,srdict):
 	fill = {}
 	# default options
@@ -272,7 +269,6 @@ def read_fill(line,figc,plotc,sdict,cdict,srdict):
 	 			elif optsraw and strip_d(optsraw[0].lower(),'\'')=='alpha': # col->rgba
 	 				optsraw.pop(0)
 	 				opta  = getnextarg(optsraw)
-	 				#print opt
 	 				r,g,b = srdict.setdefault(opt,(128,128,128))
 	 				a     = float(opta)*100
 	 				fill['color']='rgba255(%i,%i,%i,%f)'%(r,g,b,a)
@@ -289,7 +285,6 @@ def read_fill(line,figc,plotc,sdict,cdict,srdict):
   	vecy1  = 'y1__%s'%sdict['vec']
   	vecy2  = 'y2__%s'%sdict['vec']
  	script+= 'c__ = %s%s\n'%(sdict['cbind']%(sdict['cbind']%(vecx,vecy1),vecy2),sdict['EOL'])
-	####dfn    = '%sdatfill%i_%i.dat'%(t_dir,figc,plotc)
 	dfn    = '.__datfill%i_%i.dat'%(figc,plotc)
   	script+= '%s%s\n'%(sdict['writevar']%(dfn,'c__'),sdict['EOL'])
  	#
@@ -304,15 +299,14 @@ def read_fill(line,figc,plotc,sdict,cdict,srdict):
 #
 #	<in>:	line (from core part of script doc)
 #	<out>:	returns line + output line
-####def read_hist(line,t_dir,figc,plotc,sdict,cdict,srdict):
 def read_hist(line,figc,plotc,sdict,cdict,srdict):
 	hist = {}
 	# default options
  	hist['edgecolor'] = 'white'
  	hist['facecolor'] = 'cornflowerblue'
  	hist['alpha'] 	  = False
- 	hist['N']		  = 1
- 	hist['width'] 	  = 1
+ 	hist['norm']	  = 'count'
+ 	nbins 			  = 0
  	# get plot arguments
  	args = get_fargs(line)
  	# ------------------------------------------
@@ -330,10 +324,17 @@ def read_hist(line,figc,plotc,sdict,cdict,srdict):
 	 	optsraw = args
 	 	while optsraw:
 	 		opt = getnextarg(optsraw)
-	 		#
-	 		# NEEDS WORKING -- NORMALIZATION THING
-	 		# 
-	 		if opt in ['r','g','b','c','m','y','k','w']:
+	 		if   opt == 'normalization':
+	 			normalization = getnextarg(optsraw)
+	 			if normalization in ['count','probability','countdensity','pdf','cumcount','cdf']:
+	 				hist['norm'] = normalization
+	 			else:
+					print '\nwarning::S2G::HIST::unknown normalization, going default (count)\n'
+			elif opt.isdigit() or opt == 'nbins':
+				if opt == 'nbins':
+					opt = getnextarg(optsraw)
+				nbins = int(opt)
+	 		elif opt in ['r','g','b','c','m','y','k','w']:
 				hist['facecolor']=cdict[opt]
 			elif opt in ['color','facecolor']:
 	 			opt  = getnextarg(optsraw) # colname
@@ -347,7 +348,6 @@ def read_hist(line,figc,plotc,sdict,cdict,srdict):
 	 			elif optsraw and strip_d(optsraw[0].lower(),'\'')=='alpha': # col->rgba
 	 				optsraw.pop(0)
 	 				opta  = getnextarg(optsraw)
-	 				#print opt
 	 				r,g,b = srdict.setdefault(opt,(128,128,128))
 	 				a     = float(opta)*100
 	 				hist['facecolor']='rgba255(%i,%i,%i,%f)'%(r,g,b,a)
@@ -371,9 +371,17 @@ def read_hist(line,figc,plotc,sdict,cdict,srdict):
   	# 
   	vecx   = 'x__%s' %sdict['vec']
  	script+= 'c__ = %s%s\n'%(vecx,sdict['EOL'])
-	####dfn    = "%sdathist%i_%i.dat"%(t_dir,figc,plotc)
 	dfn    = ".__dathist%i_%i.dat"%(figc,plotc)
   	script+= "%s%s\n"%(sdict['writevar']%(dfn,'c__'),sdict['EOL'])
+ 	script+= 'xmin__ = %s%s\n'%(sdict['minvec']%vecx,sdict['EOL'])
+ 	script+= 'xmax__ = %s%s\n'%(sdict['maxvec']%vecx,sdict['EOL'])
+ 	if not nbins:
+ 		script+='nbins__ = %s%s\n'%(sdict['autobins'].format(sdict['lenvec']%vecx),sdict['EOL'])
+ 	else:
+ 		script+='nbins__ = %i%s\n'%(nbins,sdict['EOL'])
+ 	script+= 'c2__ = %s%s\n'%(sdict['rbind']%(sdict['rbind']%('xmin__','xmax__'),'nbins__'),sdict['EOL']) 
+	dfn2   = ".__dathist%i_%i_side.dat"%(figc,plotc)
+  	script+= "%s%s\n"%(sdict['writevar']%(dfn2,'c2__'),sdict['EOL'])
  	#
  	hist['script'] = script
  	return hist

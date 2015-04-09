@@ -8,7 +8,7 @@ markers = r'|'.join([
 	'fill',
 	'fillbetween',
 #	'bar',
-	'hist',
+	'hist','histogram',
 	'hold',
 	r'[xy]lim',
 	r'[xy]label',
