@@ -53,7 +53,7 @@ If you want a png output, use the option `-png` eg:
 
 Running the above command with the `-dev` option generates the following files:
 
-1. `.__ex_basic_script_tmp.jl` whose core is
+(1) `.__ex_basic_script_tmp.jl` whose core is
 ```Julia
 x = linspace(-5,5,500)
 y = exp(-(x).^2/2)
@@ -63,7 +63,8 @@ c__ = [x__[:] y__[:]]
 writecsv(".__datplot1_1.dat",c__)
 ```
 so you can see that the script that ends up being run only aims at producing `.dat` files on which the plots will be based. 
-2. `.__ex_basic_plot1_g.gle` whose core is
+
+(2) `.__ex_basic_plot1_g.gle` whose core is
 ```
 begin graph
 	scale auto
@@ -79,7 +80,8 @@ begin graph
 end graph
 ```
 this is the GLE syntax which will generate one plot based on the given `.dat` file.
-3. `.__datplot1_1.dat` which contains lines like
+
+(3) `.__datplot1_1.dat` which contains lines like
 ```
 -3.6773547094188377,.0011575277138466272
 -3.657314629258517,.001245802786172585
