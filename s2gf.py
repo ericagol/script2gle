@@ -37,8 +37,9 @@ getnextarg  = lambda lst: strip_d(lst.pop(0).lower(),'\'')
 #	<in>:	string like plot(x,y,'+r')
 # 	<out>:	list of arguments
 def get_fargs(line):
+	global script_stack
 	# get core
-	core = search(r'^(\w+)\((.*?)(\)\s*;?\s*)$',line).group(2)
+ 	core = search(r'^(?:\w+)\((.*?)(?:\)\s*;?\s*)$',line).group(1)
 	# split core with commas
 	spl  = core.split(',')
 	spl  = [v.strip() for v in spl] # remove trailing spaces
@@ -326,8 +327,10 @@ def read_hist(line,figc,plotc,sdict,cdict,srdict):
 	 		opt = getnextarg(optsraw)
 	 		if   opt == 'normalization':
 	 			normalization = getnextarg(optsraw)
-	 			if normalization in ['count','probability','countdensity','pdf','cumcount','cdf']:
+	 			if normalization in ['count','probability','countdensity','pdf']:
 	 				hist['norm'] = normalization
+	 			elif normalization in ['cumcount','cdf']:
+					print '\nwarning::S2G::HIST::cumcount/cdf not handled, going default (count)\n'
 	 			else:
 					print '\nwarning::S2G::HIST::unknown normalization, going default (count)\n'
 			elif opt.isdigit() or opt == 'nbins':

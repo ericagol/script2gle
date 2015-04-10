@@ -39,8 +39,8 @@ if len(argv)>2:
 		else:
 			print 'Ignoring unrecognized arg.: <'+arg+'>'
 #
-# ------------------------------------------------------------------------------------------
-# ------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 #
 rname  	   = argv[1]
 fname,fext = splitext(rname)    # full name with directory + file extension
@@ -101,12 +101,29 @@ markers = r'|'.join([markers,script_dict['append']])
 # == MAIN BLOCK =================
 # create temp matlab file which
 # outputs data file for each plot
-with open(rname,'r') as sf_orig:
+with open(rname,'r') as sf_orig: 
 	with open(s_tmp+fext,'w+') as sf_tmp:
 		# script lines > stack of lines to process
-		stack = sf_orig.readlines()
-		while stack:
-			l = stack.pop(0)
+		script_stack = sf_orig.readlines()
+		while script_stack:
+			l = script_stack.pop(0)
+			# line continuation (...)
+			srch_cl = search(r'(.*?)\.\.\.',l)
+			if srch_cl:
+				line_open = True
+				nloops = 0
+				l = srch_cl.group(1)
+				while line_open and nloops<100:
+					nloops+=1
+					lt = script_stack.pop(0)
+					srch_cl = search(r'(.*?)\.\.\.',lt)
+					if srch_cl:
+						l+=srch_cl.group(1)
+					else:
+						line_open = False
+						l+=lt
+				if line_open:
+					print 'error::S2G::ellipsis was found but not closed, check!\n'
 			# lines to ignore (and write as blank) if they appear
 			if  s2gf.match_start(ignored,l): continue
 			#
@@ -196,16 +213,18 @@ with open(rname,'r') as sf_orig:
 					#
 					block   += 'data ".__dathist%i_%i.dat"\n'%(figc,plotc)
 					plotc   += 1
-					block   += 'N__ = ndata(d%i)\n'%plotc
+					block   += 'N_ = ndata(d%i)\n'%plotc
 					block   += 'width_ = (xmax_-xmin_)/%s\n'%('nbins_')
 					norm     = '1'
-					if hist['norm']=='probability': norm = '1.0/N__'
-					##
+					if   hist['norm']=='probability':  norm = '1.0/N_'
+					elif hist['norm']=='countdensity': norm = '1.0/width_'
+					elif hist['norm']=='pdf':          norm = '1.0/(N_*width_)'
 					block   += 'let d%i = hist d%i from xmin_ to xmax_ bins %s\n'%(plotc+1,plotc,'nbins_')
 					block   += 'let d%i = d%i*%s\n'%(plotc+1,plotc+1,norm)
 					block   += 'bar d%i color %s fill %s width %s\n'%(plotc+1,hist['edgecolor'],hist['facecolor'],'width_')
 					fig.plot+= block
 					fig.trsp = fig.trsp or hist['alpha']
+					plotc   += 1
  			# -------------------------
  			# AXIS LINES (pass in temp)
  			# (atm, ignore fontsize)
@@ -315,7 +334,7 @@ with open(rname,'r') as sf_orig:
 				print 'Appending script <', scriptname, '>...'
 				with open(scriptname,'r') as script:
 					# prepend the script to stack of lines
-					stack = script.readlines()+stack
+					script_stack = script.readlines()+script_stack
 		# if figure remains -> append it
 		if figc>len(figs): figs.append(fig)
 		sf_tmp.write('\nexit()\n')

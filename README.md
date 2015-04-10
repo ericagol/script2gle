@@ -27,7 +27,7 @@ Roughly, the workflow is as follows:
 
 I'm assuming that your `$PATH` variable has been updated accordingly so that you can call each of those with `gle`, `julia`, `octave` and `matlab`.
 
-If you intend to use transparency (`fill` command), then GLE needs to be able to run with a `cairo` option, nothing to be done on Linux (tested on Fedora) or OSX (tested on Yosemite) but I haven't tested it on Windows.
+If you intend to use transparency (`fill` command), then GLE needs to be able to run with a `cairo` option, nothing to be done on Linux (tested on Fedora) or OSX (tested on Yosemite) but I haven't tested it on Windows. Also a warning may be issued if you're using this in the draft mode (without the `-tex` option), and the font might be changed to agree with cairo. Compile with `-tex` option to get rid of that warning.
 
 ## Quick example
 
@@ -104,3 +104,9 @@ which should generate the figure below:
 ![smalltest2.m](/examples/octavematlab/smalltest2_plot1_g.png);
 
 **Remark**: as you may have realized, `fillbetween` is not part of Matlab syntax, it's just a useful extension here, and the idea is to have a `Matlab-like` syntax but without restriction for a bit of syntactic sugar (remember, this does not have the ambition to be an award winning software (...) but rather to be a useful hack).
+
+## Additional comments
+### Use of transparency
+- needs `-cairo` working (ok on Linux, Mac, ?Windows)
+- the `alpha` needs to be directly the color option so `(...,'color','cornflowerblue','alpha',0.8)` is the valid syntax
+- another way to use it is the RGBA syntax: `(...,[0.2,0.3,0.9,0.5])` will take `r=0.2` etc and `alpha=0.5`.
