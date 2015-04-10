@@ -139,11 +139,11 @@ def read_plot(line, figc, plotc, sdict, cdict):
 		script = 'x__ = %s%s\n'%(args[0],sdict['EOL'])
 		script+= 'y__ = %s%s\n'%(args[1],sdict['EOL'])
 	#
-	vecx   = 'x__%s'%sdict['vec']
-	vecy   = 'y__%s'%sdict['vec']
+	vecx   = sdict['vec']%'x__'
+	vecy   = sdict['vec']%'y__'
 	script+= 'c__ = %s%s\n'%(sdict['cbind']%(vecx,vecy),sdict['EOL'])
 	dfn    = ".__datplot%i_%i.dat"%(figc,plotc)
-	script+= "%s%s\n"%(sdict['writevar']%(dfn,'c__'),sdict['EOL'])
+	script+= "%s%s\n"%(sdict['writevar'].format(dfn,'c__'),sdict['EOL'])
 	#
 	plt['script'] = script
 	# ---------------------------------
@@ -282,12 +282,12 @@ def read_fill(line,figc,plotc,sdict,cdict,srdict):
 	script+= 'y1__ = %s%s\n'%(yname1,sdict['EOL'])
 	script+= 'y2__ = %s%s\n'%(yname2,sdict['EOL'])
   	#
-  	vecx   = 'x__%s' %sdict['vec']
-  	vecy1  = 'y1__%s'%sdict['vec']
-  	vecy2  = 'y2__%s'%sdict['vec']
+  	vecx   = sdict['vec']%'x__'
+  	vecy1  = sdict['vec']%'y1__'
+  	vecy2  = sdict['vec']%'y2__'
  	script+= 'c__ = %s%s\n'%(sdict['cbind']%(sdict['cbind']%(vecx,vecy1),vecy2),sdict['EOL'])
 	dfn    = '.__datfill%i_%i.dat'%(figc,plotc)
-  	script+= '%s%s\n'%(sdict['writevar']%(dfn,'c__'),sdict['EOL'])
+  	script+= '%s%s\n'%(sdict['writevar'].format(dfn,'c__'),sdict['EOL'])
  	#
  	fill['script'] = script
  	return fill
@@ -372,10 +372,10 @@ def read_hist(line,figc,plotc,sdict,cdict,srdict):
   	#
   	# NEEDS WORKING, NOT JUST VEC IT, IF MULTI COLUMN THEN STACK
   	# 
-  	vecx   = 'x__%s' %sdict['vec']
+  	vecx   = sdict['vec']%'x__'
  	script+= 'c__ = %s%s\n'%(vecx,sdict['EOL'])
 	dfn    = ".__dathist%i_%i.dat"%(figc,plotc)
-  	script+= "%s%s\n"%(sdict['writevar']%(dfn,'c__'),sdict['EOL'])
+  	script+= "%s%s\n"%(sdict['writevar'].format(dfn,'c__'),sdict['EOL'])
  	script+= 'xmin__ = %s%s\n'%(sdict['minvec']%vecx,sdict['EOL'])
  	script+= 'xmax__ = %s%s\n'%(sdict['maxvec']%vecx,sdict['EOL'])
  	if not nbins:
@@ -384,7 +384,7 @@ def read_hist(line,figc,plotc,sdict,cdict,srdict):
  		script+='nbins__ = %i%s\n'%(nbins,sdict['EOL'])
  	script+= 'c2__ = %s%s\n'%(sdict['rbind']%(sdict['rbind']%('xmin__','xmax__'),'nbins__'),sdict['EOL']) 
 	dfn2   = ".__dathist%i_%i_side.dat"%(figc,plotc)
-  	script+= "%s%s\n"%(sdict['writevar']%(dfn2,'c2__'),sdict['EOL'])
+  	script+= "%s%s\n"%(sdict['writevar'].format(dfn2,'c2__'),sdict['EOL'])
  	#
  	hist['script'] = script
  	return hist

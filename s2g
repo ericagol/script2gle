@@ -65,24 +65,41 @@ newfig = lambda figc: glec.gle('.__%s_plot%i'%(fname2,figc))
 if fext == '.jl':
 	script_dict = {
 		'append'	: 'include',
-		'writevar'	: 'writecsv(\"%s\",%s)',
-		'vec'		: '[:]',
+		'writevar'	: 'writecsv(\"{0}\",{1})', # with .format not %
+		'vec'		: '%s[:]',
 		'minvec'	: 'minimum(%s)',
 		'maxvec'	: 'maximum(%s)',
 		'lenvec'	: 'length(%s)',
-		'autobins'  : '({0}<10)*{0}+(10<={0}<30)*10+(30<={0})*int(round(sqrt({0})))', # with .format not %
+		'autobins'  : '({0}<10)*{0}+(10<={0}<30)*10+(30<={0})*int(round(sqrt({0})))',
 		'EOL'		: '',
 		'cbind' 	: '[%s %s]',
 		'rbind'		: '[%s;%s]',
-		'span' 		: '1:prod(size(%s))'
+		'span' 		: '1:prod(size(%s))',
+		'exit' 		: 'exit()'
 	}
 	caller = 'julia'
+elif fext == '.R':
+	script_dict = {
+		'append'	: 'source',
+		'writevar'	: 'write.table({1},file=\'{0}\',row.names=F,col.names=F)',
+		'vec'		: 'c(%s)',
+		'minvec'	: 'min(%s)',
+		'maxvec'	: 'max(%s)',
+		'lenvec'	: 'length(%s)',
+		'autobins'  : '({0}<10)*{0}+(10<={0} && {0}<30)*10+(30<={0})*round(sqrt({0}))',
+		'EOL'		: '',
+		'cbind' 	: 'cbind(%s,%s)',
+		'rbind'		: 'rbind(%s,%s)',
+		'span' 		: '1:length(%s)',
+		'exit'		: 'q()',
+	}
+	caller = 'Rscript' 
 # >> MATLAB/OCTAVE
 elif fext == '.m':
 	script_dict = {
 		'append'	: 'run',
-		'writevar'	: 'save(\'-ascii\',\'%s\',\'%s\')',
-		'vec'		: '(:)',
+		'writevar'	: 'save(\'-ascii\',\'{0}\',\'{1}\')',
+		'vec'		: '%s(:)',
 		'minvec'	: 'min(%s)',
 		'maxvec'	: 'max(%s)',
 		'lenvec' 	: 'length(%s)',
@@ -90,7 +107,8 @@ elif fext == '.m':
 		'EOL'		: ';',
 		'cbind'		: '[%s %s]',
 		'rbind'		: '[%s;%s]',
-		'span'		: '1:prod(size(%s))'
+		'span'		: '1:prod(size(%s))',
+		'exit'		: 'exit()'
 	}
 	if no_octave:
 		caller = 'matlab -nodesktop -nosplash -noFigureWindows -r'
@@ -337,7 +355,7 @@ with open(rname,'r') as sf_orig:
 					script_stack = script.readlines()+script_stack
 		# if figure remains -> append it
 		if figc>len(figs): figs.append(fig)
-		sf_tmp.write('\nexit()\n')
+		sf_tmp.write('\n%s\n'%script_dict['exit'])
 
 # = # = # = # = # = # = # = # = # = # = # = # = # = # = # = # = #
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
