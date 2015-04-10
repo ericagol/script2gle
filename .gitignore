@@ -31,3 +31,7 @@
 octave-workspace
 
 *.pyc
+*.dat
+*.pyc
+
+s2gf.pyc
