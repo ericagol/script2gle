@@ -35,3 +35,4 @@ octave-workspace
 *.pyc
 
 s2gf.pyc
+.RData
