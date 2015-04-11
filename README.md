@@ -24,12 +24,12 @@ xlabel('$x$')
 ylabel('$y=\mathcal N(x;1,5)$')
 ```
 
-run with `S2G` will generate the figure below:
-![introtest.R](/examples/R/introtest_plot1_g.png);
+running with `S2G` will generate the figure below:
+![introtest.R](/examples/R/introtest_plot1_g.png)
 
 ### The workflow
 
-Roughly, the workflow is as follows:
+The workflow goes as follows ([see also here](#workf_ex)):
 
 1. "Parse" the script (`.jl`, `.m` or `.R` so far),
 2. Generate temporary script based on original script replacing "display lines" by lines outputting relevant data files,
@@ -50,8 +50,9 @@ Roughly, the workflow is as follows:
 
 I'm assuming that your `$PATH` variable has been updated accordingly so that you can call each of those in the terminal respectively with `gle`, `julia`, `octave`, `matlab` or `R`.
 
-**Side Remark** (*Ignore if using OSX or Linux*), if you intend to use transparency (see `fill` command), then GLE needs to be able to run with `cairo` option, nothing to be done on Linux (tested on Fedora) or OSX (tested on Yosemite) but I haven't tested it on Windows (but it should also work). \\
-A warning may be issued if you're using transparency in the draft mode (without the `-tex` option), and the font might be changed to agree with cairo. You can safely ignore this and if it bothers you, compile with `-tex` option.
+**Side Remark** (*Ignore if using OSX or Linux*), if you intend to use transparency (see `fill` command), then GLE needs to be able to run with `cairo` option, nothing to be done on Linux (tested on Fedora) or OSX (tested on Yosemite) but I haven't tested it on Windows (but it should also work). 
+
+A warning may be issued if you're using transparency in the draft mode (without the `-tex` option), and the font might be changed to agree with cairo. You can safely ignore this and if it bothers you, re-compile with `-tex` option.
 
 ### Quick notes on installing GLE
 
@@ -59,11 +60,11 @@ Excellent instructions can be found on [their website](http://glx.sourceforge.ne
 
 1. on Fedora 20 compiling from source with gcc 4.8.3, worked seamlessly.
 2. on OSX 10.10
-2.1 from `.dmg`, needed ghostscript then worked seamlessly,
-2.2 from source with gcc (Apple LLVM 6.0) a small thing needs be done (patch found on [macports](https://trac.macports.org/attachment/ticket/41760/patch-hash-map.diff)):
-- comment line 54 of `PATH/src/gle/tokens/StringKeyHash.h`
-- uncomment line 57
-- then run as usual: `make` (takes a bit of time) then `make install`.
+  1. from `.dmg`, needed ghostscript then worked seamlessly,
+  2. from source with gcc (Apple LLVM 6.0) a small thing needs be done (patch found on [macports](https://trac.macports.org/attachment/ticket/41760/patch-hash-map.diff)):
+    * comment line 54 of `PATH/src/gle/tokens/StringKeyHash.h`
+    * uncomment line 57
+    * then run as usual: `make` (takes a bit of time) then `make install`.
 
 ### Installing S2G
 
@@ -89,7 +90,7 @@ If you want a png output, use the option `-png` eg:
 s2g ex_basic.jl -tex -png
 ```
 
-The aim of this hack is to use `Matlab`-like syntax so if you're used to it, there is not much to learn. The document `SYNTAX.md` available in this repo aims at listing some of the commands that are currently available, the ones that aren't and what's on the way.
+The aim of this hack is to use `Matlab`-like syntax so if you're used to it, there is not much to learn. The document [SYNTAX.md](./SYNTAX.md) available in this repo aims at listing some of the commands that are currently available, the ones that aren't and what's on the way.
 
 ## An example in Octave/Matlab
 
@@ -141,7 +142,7 @@ which should generate the figure below:
 
 **Remark**: as you may have realized, `fillbetween` is not part of Matlab syntax, it's just a useful extension here, and the idea is to have a `Matlab-like` syntax but without restriction for a bit of syntactic sugar (remember, this does not have the ambition to be an award winning software (...) but rather to be a useful hack).
 
-## Understanding the workflow with an example
+## <a name="workf_ex"></a>Understanding the workflow with an example
 
 Running the above command with the `-dev` option generates the following files:
 
