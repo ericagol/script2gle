@@ -6,7 +6,26 @@ This project is still under (rather heavy but infrequent) development.
 
 ## What this is about
 
-The rough idea is to use `Matlab` style syntax for figures whilst generating GLE ([Graphics Layout Engine](http://glx.sourceforge.net/index.html)) code in the background to output top-quality graphs with TeX support. The advantage of using GLE it supports the use of LaTeX very easily (cf. example).
+The rough idea is to use `Matlab` style syntax for figures (`plot`,`hist`,...) within a script of your choice (in `R`,`Octave/Matlab`,`Julia`) to generate top-quality plots supporting LaTeX using **GLE** ([Graphics Layout Engine](http://glx.sourceforge.net/index.html)) in the background.
+
+### A very quick example
+
+The following `R` script:
+
+```R
+draw = rnorm(500,mean=1,sd=5)
+x    = seq(-15,20,len=200)
+y 	 = dnorm(x,mean=1,sd=5)
+#
+hist(draw,'normalization','pdf','facecolor','indianred','edgecolor','dodgerblue')
+hold on
+plot(x,y,'-b','linewidth',0.5)
+```
+
+will generate the figure below:
+![introtest.R](/examples/R/introtest_plot1_g.png);
+
+### The workflow
 
 Roughly, the workflow is as follows:
 
@@ -18,7 +37,9 @@ Roughly, the workflow is as follows:
 
 **Rem**: if `-dev` option is chosen, one can have a look at the temporary files that have been created (useful for debugging), the temporary files are hidden by default with names starting with `.__`, if you can't see them use `ls -a` in the appropriate directory.
 
-## Requirements
+## Installing
+
+### Requirements
 
 - A working version of `Python 2.x` (tested with `2.7.6`),
 - A working version of GLE ([Link](http://glx.sourceforge.net/index.html)),
