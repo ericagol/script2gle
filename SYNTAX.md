@@ -1,5 +1,14 @@
 # S2G syntax
 
+## General remarks
+
+Expressions to be evaluated within S2G lines will be evaluated with the context-script and hence have to be valid within that script. For example in R this would be valid:
+```R
+N = 500
+draw = rnorm(N)
+hist(draw,'nbins',ceiling(sqrt(N)))
+```
+
 ## 2D Plots
 
 ### Basic Syntax
@@ -44,10 +53,11 @@ Accepted format
 hist(x,...)
 ```
 where `...` goes for options, accepted options are:
-- **number of bins** just an integer or the name `nbins` followed by an integer,
+- **number of bins** just an integer or the name `nbins` followed by an expression (e.g. in R `...,'nbins',ceiling(sqrt(N))+3,...),
 - **normalization** using the name `normalization` followed by one of `probability` (height=count/totcount), `pdf` (h=count/totcount*binwidth), `countdensity` (height=count/width) (default is just the count),
 - **face color** using the name `color` or `facecolor` followed by a matlab short (`rgbmc...`) or an X11 name or an RGB triplet or an RGBA (with transparency eg `[0.1 0.5 0.7 0.3]` will have alpha set to 30%). An alternative for transparency is to use an X11 name followed by `alpha` and a number between 0 and 1 e.g.: `...,'facecolor','cornflowerblue','alpha',0.7,...`.
 - **edge color** using the name `edgecolor` followed by a matlab short or an X11 name or an RGB triplet
+- **from to** using the name `from` followed by an expression and/or the name `to` followed by an expression, it overwrites the default range of bins (from `min(draw)` to `max(draw)`) this can be useful when comparing two histograms where one wants the bins to overlap.
 
 #### FILL
 

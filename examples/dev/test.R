@@ -1,3 +1,4 @@
-draw = rnorm(500)
+N = 500
+draw = rnorm(N)
 
-hist(draw) # this is a comment
+hist(draw,'nbins',ceiling(sqrt(N))) # this is a comment

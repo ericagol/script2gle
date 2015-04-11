@@ -6,8 +6,11 @@ y 	 = dnorm(x,mean=1,sd=5)
 hist(draw1,'normalization','pdf',...
 	'facecolor','indianred','alpha',0.5,'edgecolor','indianred')
 hold on
+# using to/from specification so that bins overlap exactly
+# (if removed then bins will be adjusted from min to max)
 hist(draw2,'normalization','pdf',...
-	'facecolor','navy','alpha',0.5,'edgecolor','navy')
+	'facecolor','navy','alpha',0.5,'edgecolor','navy',...
+	'from',min(draw1),'to',max(draw1))
 plot(x,y,'-b','linewidth',0.5)
 xlabel('$x$')
 ylabel('$y=\mathcal N(x;1,5)$')

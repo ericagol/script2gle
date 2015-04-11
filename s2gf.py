@@ -9,23 +9,24 @@ import s2gd
 # LAMBDA FUNCTIONS ########
 ###########################
 # match a certain expression at start of string
-match_start = lambda expr,line: match(r'\s*(%s)[^a-zA-Z0-9]'%expr,line)
+match_start  = lambda expr,line: match(r'\s*(%s)[^a-zA-Z0-9]'%expr,line)
 # strip unwanted delimiters from string
-strip_d     = lambda s,d: sub(d,'',s)
+strip_d      = lambda s,d: sub(d,'',s)
 # check if string is closed
-s_cld 		= lambda s: not match(r'[\(\[\{]*\'',s) or match(r'[\(\[\{]*\'(.*)\'',s)
+s_cld 		 = lambda s: not match(r'[\(\[\{]*\'',s) or match(r'[\(\[\{]*\'(.*)\'',s)
 # remove strings, then count delimiters
-cnt_d 		= lambda s,d: sub(r'\'.*\'','',s).count(d)
+cnt_d 		 = lambda s,d: sub(r'\'.*\'','',s).count(d)
 # add $ to each expression in a list (to match exactly that)
-shut_l      = lambda l: [e+r'$' for e in l]
+shut_l       = lambda l: [e+r'$' for e in l]
 # check is string is in list
-rem_esp 	= lambda l: [sub(' ','',e) for e in l]
+rem_esp 	 = lambda l: [sub(' ','',e) for e in l]
 # check if pattern is open
-check_open  = lambda s,d1,d2: s_cld(s) if d1=='\'' else not bool(cnt_d(s,d1)-cnt_d(s,d2))
+check_open   = lambda s,d1,d2: s_cld(s) if d1=='\'' else not bool(cnt_d(s,d1)-cnt_d(s,d2))
 # get first argument (cf getfargs)
-getarg1     = lambda l: strip_d(get_fargs(l)[0],'\'')
+getarg1      = lambda l: strip_d(get_fargs(l)[0],'\'')
 # get next arg
-getnextarg  = lambda lst: strip_d(lst.pop(0).lower(),'\'')
+getnextarg   = lambda lst: strip_d(lst.pop(0).lower(),'\'')
+getnextargNL = lambda lst: strip_d(lst.pop(0),'\'')
 #
 ###########################
 # FUNCTIONS ###############
@@ -189,6 +190,8 @@ def read_plot(line, figc, plotc):
 			#
 			elif opt=='color':
 				tls['color'] = getnextarg(optsraw)
+				if tls['color'] in ['r','g','b','c','m','y','k','w']:
+					tls['color'] = s2gd.md[tls['color']]
 			#
 			# LWIDTH OPTION
 			#
@@ -307,6 +310,8 @@ def read_hist(line,figc,plotc):
  	hist['facecolor'] = 'cornflowerblue'
  	hist['alpha'] 	  = False
  	hist['norm']	  = 'count'
+ 	hist['from'] 	  = ''
+ 	hist['to']		  = ''
  	nbins 			  = 0
  	# get plot arguments
  	args = get_fargs(line)
@@ -333,10 +338,14 @@ def read_hist(line,figc,plotc):
 					print '\nwarning::S2G::HIST::cumcount/cdf not handled, going default (count)\n'
 	 			else:
 					print '\nwarning::S2G::HIST::unknown normalization, going default (count)\n'
-			elif opt.isdigit() or opt == 'nbins':
+			elif opt == 'nbins' or opt.isdigit():
 				if opt == 'nbins':
-					opt = getnextarg(optsraw)
-				nbins = int(opt)
+					opt = getnextargNL(optsraw)
+				nbins = opt
+			elif opt == 'from':
+				hist['from'] = getnextargNL(optsraw)
+			elif opt == 'to':
+				hist['to'] = getnextargNL(optsraw)
 	 		elif opt in ['r','g','b','c','m','y','k','w']:
 				hist['facecolor']=s2gd.md[opt]
 			elif opt in ['color','facecolor']:
@@ -356,6 +365,8 @@ def read_hist(line,figc,plotc):
 	 				hist['facecolor']='rgba255(%i,%i,%i,%f)'%(r,g,b,a)
 	 			else: # just colname
 	 				hist['facecolor']=opt
+	 				if hist['facecolor'] in ['r','g','b','c','m','y','k','w']:
+						hist['facecolor']=s2gd.md['facecolor']
 	 		elif opt=='edgecolor':
 	 			opt = getnextarg(optsraw) # colname, no transp
 	 			# option given form [r,g,b,a?]
@@ -365,6 +376,8 @@ def read_hist(line,figc,plotc):
 		 			hist['edgecolor']='rgba(%s,%s,%s,%s)'%(r,g,b,a)
 	 			else: # just colname
 	 				hist['edgecolor']=opt
+	 				if hist['edgecolor'] in ['r','g','b','c','m','y','k','w']:
+						hist['edgecolor']=s2gd.md[hist['edgecolor']]
 	#
  	if not a==1: hist['alpha']=True
  	#
@@ -376,12 +389,18 @@ def read_hist(line,figc,plotc):
  	script+= 'c__ = %s%s\n'%(vecx,s2gd.csd['EOL'])
 	dfn    = ".__dathist%i_%i.dat"%(figc,plotc)
   	script+= "%s%s\n"%(s2gd.csd['writevar'].format(dfn,'c__'),s2gd.csd['EOL'])
- 	script+= 'xmin__ = %s%s\n'%(s2gd.csd['minvec']%vecx,s2gd.csd['EOL'])
- 	script+= 'xmax__ = %s%s\n'%(s2gd.csd['maxvec']%vecx,s2gd.csd['EOL'])
+  	if not hist['from']:
+  		script+= 'xmin__ = %s%s\n'%(s2gd.csd['minvec']%vecx,s2gd.csd['EOL'])
+ 	else:
+ 		script+= 'xmin__ = %s%s\n'%(hist['from'],s2gd.csd['EOL'])
+ 	if not hist['to']:
+ 		script+= 'xmax__ = %s%s\n'%(s2gd.csd['maxvec']%vecx,s2gd.csd['EOL'])
+	else:
+	 	script+= 'xmax__ = %s%s\n'%(hist['to'],s2gd.csd['EOL'])
  	if not nbins:
  		script+='nbins__ = %s%s\n'%(s2gd.csd['autobins'].format(s2gd.csd['lenvec']%vecx),s2gd.csd['EOL'])
  	else:
- 		script+='nbins__ = %i%s\n'%(nbins,s2gd.csd['EOL'])
+ 		script+='nbins__ = %s%s\n'%(nbins,s2gd.csd['EOL'])
  	script+= 'c2__ = %s%s\n'%(s2gd.csd['rbind']%(s2gd.csd['rbind']%('xmin__','xmax__'),'nbins__'),s2gd.csd['EOL']) 
 	dfn2   = ".__dathist%i_%i_side.dat"%(figc,plotc)
   	script+= "%s%s\n"%(s2gd.csd['writevar'].format(dfn2,'c2__'),s2gd.csd['EOL'])

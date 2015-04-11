@@ -1,13 +1,12 @@
-# markers
-# > can appear but won't be considered
+# start of line markers
+# > can appear but line won't be considered
 ignored = r'|'.join([r'^\s*home',r'^\s*clear',r'^\s*close'])
 # > can appear and will trigger something
 markers = r'|'.join([ 	
 	'figure',
 	'plot',
 	'fill',
-	'fillbetween',
-#	'bar',
+	'fillbetween',			# extra syntax
 	'hist','histogram',
 	'hold',
 	r'[xy]lim',
