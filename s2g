@@ -13,7 +13,6 @@ from time import time
 import glec
 import s2gf
 import s2gd
-from s2gd import *
 
 ###########################
 # USER ARGUMENTS ##########
@@ -62,66 +61,20 @@ newfig = lambda figc: glec.gle('.__%s_plot%i'%(fname2,figc))
 #
 #
 # script dictionary for the different languages
-# ! script_dict is a global variable intervening in S2GF
-# >> JULIA
-if fext == '.jl':
-	script_dict = {
-		'append'	: 'include',
-		'writevar'	: 'writecsv(\"{0}\",{1})', # with .format not %
-		'vec'		: '%s[:]',
-		'minvec'	: 'minimum(%s)',
-		'maxvec'	: 'maximum(%s)',
-		'lenvec'	: 'length(%s)',
-		'autobins'  : '({0}<10)*{0}+(10<={0}<30)*10+(30<={0})*int(round(sqrt({0})))',
-		'EOL'		: '',
-		'cbind' 	: '[%s %s]',
-		'rbind'		: '[%s;%s]',
-		'span' 		: '1:prod(size(%s))',
-		'exit' 		: 'exit()',
-		'comment' 	: '\#',
-	}
-	caller = 'julia'
-elif fext == '.R':
-	script_dict = {
-		'append'	: 'source',
-		'writevar'	: 'write.table({1},file=\'{0}\',row.names=F,col.names=F)',
-		'vec'		: 'c(%s)',
-		'minvec'	: 'min(%s)',
-		'maxvec'	: 'max(%s)',
-		'lenvec'	: 'length(%s)',
-		'autobins'  : '({0}<10)*{0}+(10<={0} && {0}<30)*10+(30<={0})*round(sqrt({0}))',
-		'EOL'		: '',
-		'cbind' 	: 'cbind(%s,%s)',
-		'rbind'		: 'rbind(%s,%s)',
-		'span' 		: '1:length(%s)',
-		'exit'		: 'q()',
-		'comment'	: '\#',
-	}
-	caller = 'Rscript' 
-	s2gd.ignored+=r'|^\s*\#'
-# >> MATLAB/OCTAVE
-elif fext == '.m':
-	script_dict = {
-		'append'	: 'run',
-		'writevar'	: 'save(\'-ascii\',\'{0}\',\'{1}\')',
-		'vec'		: '%s(:)',
-		'minvec'	: 'min(%s)',
-		'maxvec'	: 'max(%s)',
-		'lenvec' 	: 'length(%s)',
-		'autobins'	: '({0}<10)*{0}+(10<={0} && {0}<30)*10+(30<={0})*round(sqrt({0}))',
-		'EOL'		: ';',
-		'cbind'		: '[%s %s]',
-		'rbind'		: '[%s;%s]',
-		'span'		: '1:prod(size(%s))',
-		'exit'		: 'exit()',
-		'comment' 	: '\%',
-	}
-	if no_octave:
-		caller = 'matlab -nodesktop -nosplash -noFigureWindows -r'
-	else:
-		caller = 'octave -q'
-s2gd.ignored+=r'|^\s*%s'%script_dict['comment']
-markers = r'|'.join([markers,script_dict['append']])
+if fext=='.jl':
+	s2gd.csd = s2gd.script_dict_JL
+elif fext in ['.R','.r']:
+	s2gd.csd = s2gd.script_dict_R
+elif fext=='.m':
+	s2gd.csd = s2gd.script_dict_M	
+
+s2gd.ignored+=r'|^\s*%s'%s2gd.csd['comment']
+s2gd.markers = r'|'.join([s2gd.markers,s2gd.csd['append']])
+
+	# if no_octave:
+	# 	caller = 'matlab -nodesktop -nosplash -noFigureWindows -r'
+	# else:
+	# 	caller = 'octave -q'
 #
 # == MAIN BLOCK =================
 # create temp matlab file which
@@ -152,7 +105,7 @@ with open(rname,'r') as sf_orig:
 			# lines to ignore (and write as blank) if they appear
 			if  s2gf.match_start(s2gd.ignored,l): continue
 			#
-			marker = s2gf.match_start(markers, l)
+			marker = s2gf.match_start(s2gd.markers, l)
 			if not marker:
 				sf_tmp.write(l)
 				continue
@@ -197,7 +150,7 @@ with open(rname,'r') as sf_orig:
 				# <- PLOT ACTIONS ->
 				if marker in ['plot','semilogx','semilogy','stem','loglog']:
 					# structify: extract code and options
-					plt = s2gf.read_plot(l,figc,plotc,script_dict,col_dict)
+					plt = s2gf.read_plot(l,figc,plotc)
 					# -> write to temp script file
 					sf_tmp.write(plt['script'])
 					# -> write to temp gle file
@@ -217,7 +170,7 @@ with open(rname,'r') as sf_orig:
 		 				l      = 'fill([%s,foo],[%s,fliplr(%s)],%s)'%(fbargs[0],fbargs[1],fbargs[2],s2gf.strip_d(str(fbargs[3:]),r'^\[|\]$'))
 		 				l      = sub('"','',l)
 		 			#
-					fill = s2gf.read_fill(l,figc,plotc,script_dict,col_dict,svg2rgb_dict)
+					fill = s2gf.read_fill(l,figc,plotc)
 					# -> write to temp script file
 					sf_tmp.write(fill['script'])
 					# -> write to temp gle file
@@ -226,7 +179,7 @@ with open(rname,'r') as sf_orig:
 					fig.plot+= block
 					fig.trsp = fig.trsp or fill['alpha']
 				elif marker in ['hist','histogram']:
-					hist = s2gf.read_hist(l,figc,plotc,script_dict,col_dict,svg2rgb_dict)
+					hist = s2gf.read_hist(l,figc,plotc)
 					# -> write to temp script file
 					sf_tmp.write(hist['script'])
 					# -> write to temp gle file
@@ -353,7 +306,7 @@ with open(rname,'r') as sf_orig:
 							print '\nerror::S2G:: too many legends, did you forget a HOLD?\n'
 			# ------------------------
 	 		# RUN LINES (ext. scripts)
-			elif marker==script_dict['append']:
+			elif marker==s2gd.csd['append']:
 				scriptname = s2gf.strip_d(s2gf.getarg1(l),'\"')
 				print scriptname
 				print 'Appending script <', scriptname, '>...'
@@ -362,7 +315,7 @@ with open(rname,'r') as sf_orig:
 					script_stack = script.readlines()+script_stack
 		# if figure remains -> append it
 		if figc>len(figs): figs.append(fig)
-		sf_tmp.write('\n%s\n'%script_dict['exit'])
+		sf_tmp.write('\n%s\n'%s2gd.csd['exit'])
 
 # = # = # = # = # = # = # = # = # = # = # = # = # = # = # = # = #
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -374,7 +327,7 @@ with open(rname,'r') as sf_orig:
 # RUN SCRIPT
 try:
 	start = time()
-	check_call('%s %s%s'%(caller,s_tmp,fext),shell=True)
+	check_call('%s %s%s'%(s2gd.csd['caller'],s_tmp,fext),shell=True)
 	delta = time()-start
 	print 'Calling+executing script :: ',delta
 except Exception, e:

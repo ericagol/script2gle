@@ -21,6 +21,58 @@ markers = r'|'.join([
 	'stem',
 	r'(#j2g:)'])
 #
+# definition of script dictionary in different languages
+#
+script_dict_JL = {
+	'append'	: 'include',
+	'writevar'	: 'writecsv(\"{0}\",{1})', # with .format not %
+	'vec'		: '%s[:]',
+	'minvec'	: 'minimum(%s)',
+	'maxvec'	: 'maximum(%s)',
+	'lenvec'	: 'length(%s)',
+	'autobins'  : '({0}<10)*{0}+(10<={0}<30)*10+(30<={0})*int(round(sqrt({0})))',
+	'EOL'		: '',
+	'cbind' 	: '[%s %s]',
+	'rbind'		: '[%s;%s]',
+	'span' 		: '1:prod(size(%s))',
+	'exit' 		: 'exit()',
+	'comment' 	: '\#',
+	'caller'	: 'julia'
+}
+script_dict_R = {
+	'append'	: 'source',
+	'writevar'	: 'write.table({1},file=\'{0}\',row.names=F,col.names=F)',
+	'vec'		: 'c(%s)',
+	'minvec'	: 'min(%s)',
+	'maxvec'	: 'max(%s)',
+	'lenvec'	: 'length(%s)',
+	'autobins'  : '({0}<10)*{0}+(10<={0} && {0}<30)*10+(30<={0})*round(sqrt({0}))',
+	'EOL'		: '',
+	'cbind' 	: 'cbind(%s,%s)',
+	'rbind'		: 'rbind(%s,%s)',
+	'span' 		: '1:length(%s)',
+	'exit'		: 'q()',
+	'comment'	: '\#',
+	'caller'	: 'Rscript'
+}
+script_dict_M = {
+	'append'	: 'run',
+	'writevar'	: 'save(\'-ascii\',\'{0}\',\'{1}\')',
+	'vec'		: '%s(:)',
+	'minvec'	: 'min(%s)',
+	'maxvec'	: 'max(%s)',
+	'lenvec' 	: 'length(%s)',
+	'autobins'	: '({0}<10)*{0}+(10<={0} && {0}<30)*10+(30<={0})*round(sqrt({0}))',
+	'EOL'		: ';',
+	'cbind'		: '[%s %s]',
+	'rbind'		: '[%s;%s]',
+	'span'		: '1:prod(size(%s))',
+	'exit'		: 'exit()',
+	'comment' 	: '\%',
+	'caller'	: 'octave -q'
+}
+csd = {} # current script dictionary, this is set by S2G
+#
 # legend position conversion matlab/octave > gle
 #
 leg_dict = {
@@ -52,7 +104,7 @@ leg_dict = {
 #
 # basic matlab/octave color conversion to X11 names
 #
-col_dict = {
+mcol_dict = {
 	'r'	: 'darkred',
 	'g'	: 'darkgreen',
 	'b' : 'darkblue',
@@ -62,6 +114,7 @@ col_dict = {
 	'k' : 'black',
 	'w' : 'white',
 }
+md = mcol_dict # short
 #
 # X11 names to rgb (useful when considering alpha)
 #
@@ -209,3 +262,4 @@ svg2rgb_dict = {
 	'Black'				:	(  0,0,0),
 }
 svg2rgb_dict = {k.lower() : v for k, v in svg2rgb_dict.items()}
+srd = svg2rgb_dict

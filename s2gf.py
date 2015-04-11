@@ -3,6 +3,7 @@
 #
 from re import search, sub, match
 from os.path import join
+import s2gd
 #
 ###########################
 # LAMBDA FUNCTIONS ########
@@ -38,7 +39,7 @@ getnextarg  = lambda lst: strip_d(lst.pop(0).lower(),'\'')
 # 	<out>:	list of arguments
 def get_fargs(line):
 	# get core
- 	core = search(r'^\s*(?:\w+)\((.*?)(?:\)\s*;?\s*)(\%|\#|//)?(.*)$',line).group(1)
+ 	core = search(r'^\s*(?:\w+)\((.*?)(?:\)\s*;?\s*)((?:%s).*)?$'%s2gd.csd['comment'],line).group(1)
 	# split core with commas
 	spl  = core.split(',')
 	spl  = [v.strip() for v in spl] # remove trailing spaces
@@ -112,7 +113,7 @@ def array_x(s):
 #
 #	<in>:	line (from core part of script doc)
 #	<out>:	returns line + output line
-def read_plot(line, figc, plotc, sdict, cdict):
+def read_plot(line, figc, plotc):
 	plt,tls  = {},{}
 	# default options
 	plt['lwidth'] = ' lwidth 0 '
@@ -130,19 +131,19 @@ def read_plot(line, figc, plotc, sdict, cdict):
 	sta = 2; # index of args where options start
 	# case one var: plot(x), plot(x,'+r'), ...
 	if len(args)==1 or match(r'^\s*\'',args[1]):
-		script = 'x__ = %s%s\n'%(sdict['span']%args[0],sdict['EOL'])
-		script+= 'y__ = %s%s\n'%(args[0],sdict['EOL'])
+		script = 'x__ = %s%s\n'%(s2gd.csd['span']%args[0],s2gd.csd['EOL'])
+		script+= 'y__ = %s%s\n'%(args[0],s2gd.csd['EOL'])
 		sta    = 1
 	# case two vars plot(x,y,'+r')
 	else:
-		script = 'x__ = %s%s\n'%(args[0],sdict['EOL'])
-		script+= 'y__ = %s%s\n'%(args[1],sdict['EOL'])
+		script = 'x__ = %s%s\n'%(args[0],s2gd.csd['EOL'])
+		script+= 'y__ = %s%s\n'%(args[1],s2gd.csd['EOL'])
 	#
-	vecx   = sdict['vec']%'x__'
-	vecy   = sdict['vec']%'y__'
-	script+= 'c__ = %s%s\n'%(sdict['cbind']%(vecx,vecy),sdict['EOL'])
+	vecx   = s2gd.csd['vec']%'x__'
+	vecy   = s2gd.csd['vec']%'y__'
+	script+= 'c__ = %s%s\n'%(s2gd.csd['cbind']%(vecx,vecy),s2gd.csd['EOL'])
 	dfn    = ".__datplot%i_%i.dat"%(figc,plotc)
-	script+= "%s%s\n"%(sdict['writevar'].format(dfn,'c__'),sdict['EOL'])
+	script+= "%s%s\n"%(s2gd.csd['writevar'].format(dfn,'c__'),s2gd.csd['EOL'])
 	#
 	plt['script'] = script
 	# ---------------------------------
@@ -182,7 +183,7 @@ def read_plot(line, figc, plotc, sdict, cdict):
 				#
 				# color
 				l_4 = lstyle.group(4)
-				tls['color'] = cdict.setdefault(l_4,'blue')
+				tls['color'] = s2gd.md.setdefault(l_4,'blue')
 			#
 			# COLOR OPTION
 			#
@@ -232,7 +233,7 @@ def read_plot(line, figc, plotc, sdict, cdict):
 #
 #	<in>:	line (from core part of script doc)
 #	<out>:	returns line + output line
-def read_fill(line,figc,plotc,sdict,cdict,srdict):
+def read_fill(line,figc,plotc):
 	fill = {}
 	# default options
  	fill['color'] = 'gray'
@@ -256,7 +257,7 @@ def read_fill(line,figc,plotc,sdict,cdict,srdict):
 		while optsraw:
 			opt = getnextarg(optsraw)
 			if opt in ['r','g','b','c','m','y','k','w']:
-				fill['color']=cdict[opt]
+				fill['color']=s2gd.md[opt]
 			elif opt=='color':
 	 			opt  = getnextarg(optsraw) # colname
 	 			# option given form [r,g,b,a?]
@@ -269,7 +270,7 @@ def read_fill(line,figc,plotc,sdict,cdict,srdict):
 	 			elif optsraw and strip_d(optsraw[0].lower(),'\'')=='alpha': # col->rgba
 	 				optsraw.pop(0)
 	 				opta  = getnextarg(optsraw)
-	 				r,g,b = srdict.setdefault(opt,(128,128,128))
+	 				r,g,b = s2gd.srd.setdefault(opt,(128,128,128))
 	 				a     = float(opta)*100
 	 				fill['color']='rgba255(%i,%i,%i,%f)'%(r,g,b,a)
 	 			else: # just colname
@@ -277,16 +278,16 @@ def read_fill(line,figc,plotc,sdict,cdict,srdict):
  	#
  	if not a==1: fill['alpha']=True
  	#
-	script = 'x__  = %s%s\n'%(xname ,sdict['EOL'])
-	script+= 'y1__ = %s%s\n'%(yname1,sdict['EOL'])
-	script+= 'y2__ = %s%s\n'%(yname2,sdict['EOL'])
+	script = 'x__  = %s%s\n'%(xname ,s2gd.csd['EOL'])
+	script+= 'y1__ = %s%s\n'%(yname1,s2gd.csd['EOL'])
+	script+= 'y2__ = %s%s\n'%(yname2,s2gd.csd['EOL'])
   	#
-  	vecx   = sdict['vec']%'x__'
-  	vecy1  = sdict['vec']%'y1__'
-  	vecy2  = sdict['vec']%'y2__'
- 	script+= 'c__ = %s%s\n'%(sdict['cbind']%(sdict['cbind']%(vecx,vecy1),vecy2),sdict['EOL'])
+  	vecx   = s2gd.csd['vec']%'x__'
+  	vecy1  = s2gd.csd['vec']%'y1__'
+  	vecy2  = s2gd.csd['vec']%'y2__'
+ 	script+= 'c__ = %s%s\n'%(s2gd.csd['cbind']%(s2gd.csd['cbind']%(vecx,vecy1),vecy2),s2gd.csd['EOL'])
 	dfn    = '.__datfill%i_%i.dat'%(figc,plotc)
-  	script+= '%s%s\n'%(sdict['writevar'].format(dfn,'c__'),sdict['EOL'])
+  	script+= '%s%s\n'%(s2gd.csd['writevar'].format(dfn,'c__'),s2gd.csd['EOL'])
  	#
  	fill['script'] = script
  	return fill
@@ -299,7 +300,7 @@ def read_fill(line,figc,plotc,sdict,cdict,srdict):
 #
 #	<in>:	line (from core part of script doc)
 #	<out>:	returns line + output line
-def read_hist(line,figc,plotc,sdict,cdict,srdict):
+def read_hist(line,figc,plotc):
 	hist = {}
 	# default options
  	hist['edgecolor'] = 'white'
@@ -337,7 +338,7 @@ def read_hist(line,figc,plotc,sdict,cdict,srdict):
 					opt = getnextarg(optsraw)
 				nbins = int(opt)
 	 		elif opt in ['r','g','b','c','m','y','k','w']:
-				hist['facecolor']=cdict[opt]
+				hist['facecolor']=s2gd.md[opt]
 			elif opt in ['color','facecolor']:
 	 			opt  = getnextarg(optsraw) # colname
 	 			# option given form [r,g,b,a?]
@@ -350,7 +351,7 @@ def read_hist(line,figc,plotc,sdict,cdict,srdict):
 	 			elif optsraw and strip_d(optsraw[0].lower(),'\'')=='alpha': # col->rgba
 	 				optsraw.pop(0)
 	 				opta  = getnextarg(optsraw)
-	 				r,g,b = srdict.setdefault(opt,(128,128,128))
+	 				r,g,b = s2gd.srd.setdefault(opt,(128,128,128))
 	 				a     = float(opta)*100
 	 				hist['facecolor']='rgba255(%i,%i,%i,%f)'%(r,g,b,a)
 	 			else: # just colname
@@ -367,23 +368,23 @@ def read_hist(line,figc,plotc,sdict,cdict,srdict):
 	#
  	if not a==1: hist['alpha']=True
  	#
-	script = 'x__  = %s%s\n'%(xname ,sdict['EOL'])
+	script = 'x__  = %s%s\n'%(xname ,s2gd.csd['EOL'])
   	#
   	# NEEDS WORKING, NOT JUST VEC IT, IF MULTI COLUMN THEN STACK
   	# 
-  	vecx   = sdict['vec']%'x__'
- 	script+= 'c__ = %s%s\n'%(vecx,sdict['EOL'])
+  	vecx   = s2gd.csd['vec']%'x__'
+ 	script+= 'c__ = %s%s\n'%(vecx,s2gd.csd['EOL'])
 	dfn    = ".__dathist%i_%i.dat"%(figc,plotc)
-  	script+= "%s%s\n"%(sdict['writevar'].format(dfn,'c__'),sdict['EOL'])
- 	script+= 'xmin__ = %s%s\n'%(sdict['minvec']%vecx,sdict['EOL'])
- 	script+= 'xmax__ = %s%s\n'%(sdict['maxvec']%vecx,sdict['EOL'])
+  	script+= "%s%s\n"%(s2gd.csd['writevar'].format(dfn,'c__'),s2gd.csd['EOL'])
+ 	script+= 'xmin__ = %s%s\n'%(s2gd.csd['minvec']%vecx,s2gd.csd['EOL'])
+ 	script+= 'xmax__ = %s%s\n'%(s2gd.csd['maxvec']%vecx,s2gd.csd['EOL'])
  	if not nbins:
- 		script+='nbins__ = %s%s\n'%(sdict['autobins'].format(sdict['lenvec']%vecx),sdict['EOL'])
+ 		script+='nbins__ = %s%s\n'%(s2gd.csd['autobins'].format(s2gd.csd['lenvec']%vecx),s2gd.csd['EOL'])
  	else:
- 		script+='nbins__ = %i%s\n'%(nbins,sdict['EOL'])
- 	script+= 'c2__ = %s%s\n'%(sdict['rbind']%(sdict['rbind']%('xmin__','xmax__'),'nbins__'),sdict['EOL']) 
+ 		script+='nbins__ = %i%s\n'%(nbins,s2gd.csd['EOL'])
+ 	script+= 'c2__ = %s%s\n'%(s2gd.csd['rbind']%(s2gd.csd['rbind']%('xmin__','xmax__'),'nbins__'),s2gd.csd['EOL']) 
 	dfn2   = ".__dathist%i_%i_side.dat"%(figc,plotc)
-  	script+= "%s%s\n"%(sdict['writevar'].format(dfn2,'c2__'),sdict['EOL'])
+  	script+= "%s%s\n"%(s2gd.csd['writevar'].format(dfn2,'c2__'),s2gd.csd['EOL'])
  	#
  	hist['script'] = script
  	return hist
