@@ -12,6 +12,7 @@ from time import time
 # OWN MODULES
 import glec
 import s2gf
+import s2gd
 from s2gd import *
 
 ###########################
@@ -78,6 +79,7 @@ if fext == '.jl':
 		'exit' 		: 'exit()'
 	}
 	caller = 'julia'
+	s2gd.ignored+=r'|^\s*\#'
 elif fext == '.R':
 	script_dict = {
 		'append'	: 'source',
@@ -94,6 +96,7 @@ elif fext == '.R':
 		'exit'		: 'q()',
 	}
 	caller = 'Rscript' 
+	s2gd.ignored+=r'|^\s*\#'
 # >> MATLAB/OCTAVE
 elif fext == '.m':
 	script_dict = {
@@ -114,6 +117,7 @@ elif fext == '.m':
 		caller = 'matlab -nodesktop -nosplash -noFigureWindows -r'
 	else:
 		caller = 'octave -q'
+	s2gd.ignored+=r'|^\s*\%'
 markers = r'|'.join([markers,script_dict['append']])
 #
 # == MAIN BLOCK =================
@@ -143,7 +147,7 @@ with open(rname,'r') as sf_orig:
 				if line_open:
 					print 'error::S2G::ellipsis was found but not closed, check!\n'
 			# lines to ignore (and write as blank) if they appear
-			if  s2gf.match_start(ignored,l): continue
+			if  s2gf.match_start(s2gd.ignored,l): continue
 			#
 			marker = s2gf.match_start(markers, l)
 			if not marker:

@@ -1,6 +1,6 @@
 # markers
 # > can appear but won't be considered
-ignored = r'|'.join(['home','clear','close'])
+ignored = r'|'.join([r'^\s*home',r'^\s*clear',r'^\s*close'])
 # > can appear and will trigger something
 markers = r'|'.join([ 	
 	'figure',
