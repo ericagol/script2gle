@@ -37,9 +37,8 @@ getnextarg  = lambda lst: strip_d(lst.pop(0).lower(),'\'')
 #	<in>:	string like plot(x,y,'+r')
 # 	<out>:	list of arguments
 def get_fargs(line):
-	global script_stack
 	# get core
- 	core = search(r'^\s*(?:\w+)\((.*?)(?:\)\s*;?\s*)$',line).group(1)
+ 	core = search(r'^\s*(?:\w+)\((.*?)(?:\)\s*;?\s*)(\%|\#|//)?(.*)$',line).group(1)
 	# split core with commas
 	spl  = core.split(',')
 	spl  = [v.strip() for v in spl] # remove trailing spaces

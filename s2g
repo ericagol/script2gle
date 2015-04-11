@@ -62,6 +62,7 @@ newfig = lambda figc: glec.gle('.__%s_plot%i'%(fname2,figc))
 #
 #
 # script dictionary for the different languages
+# ! script_dict is a global variable intervening in S2GF
 # >> JULIA
 if fext == '.jl':
 	script_dict = {
@@ -76,10 +77,10 @@ if fext == '.jl':
 		'cbind' 	: '[%s %s]',
 		'rbind'		: '[%s;%s]',
 		'span' 		: '1:prod(size(%s))',
-		'exit' 		: 'exit()'
+		'exit' 		: 'exit()',
+		'comment' 	: '\#',
 	}
 	caller = 'julia'
-	s2gd.ignored+=r'|^\s*\#'
 elif fext == '.R':
 	script_dict = {
 		'append'	: 'source',
@@ -94,6 +95,7 @@ elif fext == '.R':
 		'rbind'		: 'rbind(%s,%s)',
 		'span' 		: '1:length(%s)',
 		'exit'		: 'q()',
+		'comment'	: '\#',
 	}
 	caller = 'Rscript' 
 	s2gd.ignored+=r'|^\s*\#'
@@ -111,13 +113,14 @@ elif fext == '.m':
 		'cbind'		: '[%s %s]',
 		'rbind'		: '[%s;%s]',
 		'span'		: '1:prod(size(%s))',
-		'exit'		: 'exit()'
+		'exit'		: 'exit()',
+		'comment' 	: '\%',
 	}
 	if no_octave:
 		caller = 'matlab -nodesktop -nosplash -noFigureWindows -r'
 	else:
 		caller = 'octave -q'
-	s2gd.ignored+=r'|^\s*\%'
+s2gd.ignored+=r'|^\s*%s'%script_dict['comment']
 markers = r'|'.join([markers,script_dict['append']])
 #
 # == MAIN BLOCK =================
@@ -228,12 +231,12 @@ with open(rname,'r') as sf_orig:
 					sf_tmp.write(hist['script'])
 					# -> write to temp gle file
 					block  = ''
-					block += 'data ".__dathist%i_%i_side.dat"\n'%(figc,plotc)
+					block += 'data ".__dathist%i_%i_side.dat" d%i\n'%(figc,plotc,plotc)
 					block += 'xmin_  = datayvalue(d%i,1)\n'%plotc
 					block += 'xmax_  = datayvalue(d%i,2)\n'%plotc
 					block += 'nbins_ = datayvalue(d%i,3)\n'%plotc
 					#
-					block   += 'data ".__dathist%i_%i.dat"\n'%(figc,plotc)
+					block   += 'data ".__dathist%i_%i.dat" d%i\n'%(figc,plotc,plotc+1)
 					plotc   += 1
 					block   += 'N_ = ndata(d%i)\n'%plotc
 					block   += 'width_ = (xmax_-xmin_)/%s\n'%('nbins_')
