@@ -69,6 +69,7 @@ def close_split(d1,d2,lst):
 	elif tmp[:-1]:
 		lst2.append(tmp[:-1])
 	return lst2
+#
 # +++++++++++++++++++++++++++++++++++++++++++
 # ARRAY X
 # 	extract numbers in array string '[a b c]'
@@ -106,6 +107,36 @@ def array_x(s):
 			spl.remove('')
 		array = spl
 	return rem_esp(array)
+#
+# +++++++++++++++++++++++++++++++++++++++++++
+# GET COLOR:
+# 	(internal) read a 'color' option and
+#	return something in GLE format
+def get_color(optstack):
+	opt   = getnextarg(optstack)
+	color = ''
+	a     = 0
+	# option given form [r,g,b,a?]
+	rgbsearch  = search(r'\[\s*([0-9]*\.?[0-9]*)\s*,?\s*([0-9]*\.?[0-9]*)\s*,?\s*([0-9]*\.?[0-9]*)(.*)',opt)
+	if rgbsearch:
+		r,g,b  		= rgbsearch.group(1,2,3)
+		alphasearch = search(r'\s*([0-9]*\.?[0-9]*)',rgbsearch.group(4))
+		a = 1 if not alphasearch else alphasearch.group(1)
+		color = 'rgba(%s,%s,%s,%s)'%(r,g,b,a)
+	# option is x11 name + 'alpha'
+	elif optstack and strip_d(optstack[0].lower(),'\'')=='alpha': # col->rgba
+		optstack.pop(0)
+		opta  = getnextarg(optstack)
+		r,g,b = s2gd.srd.setdefault(opt,(128,128,128))
+		a     = float(opta)*100
+		color = 'rgba255(%i,%i,%i,%f)'%(r,g,b,a)
+	else: # just colname
+		color = opt
+		# if in matlab format (otherwise x11 name)
+		if color in ['r','g','b','c','m','y','k','w']:
+			color = s2gd.md['facecolor']
+	return color, a, optstack
+#
 # +++++++++++++++++++++++++++++++++++++++++++
 # READ PLOT:
 #	read a 'plot(...)' line, extracts script
@@ -186,7 +217,7 @@ def read_plot(line, figc, plotc):
 				l_4 = lstyle.group(4)
 				tls['color'] = s2gd.md.setdefault(l_4,'blue')
 			#
-			# COLOR OPTION
+			# COLOR OPTION (accept x11 names)
 			#
 			elif opt=='color':
 				tls['color'] = getnextarg(optsraw)
@@ -215,8 +246,8 @@ def read_plot(line, figc, plotc):
 			#
 			elif opt=='markerfacecolor' and not flags['mface']:
 				flags['mface']=True
-				optsraw.pop(0) # actually we don't care what color is given
-
+				optsraw.pop(0) # actually we don't care what color is given (yet)
+	#
 	# if just marker no line, if no marker no line -> lstyle 0
 	lb,mb  = bool(tls['line']),bool(tls['marker'])
 	lbool  = lb or not mb
@@ -262,22 +293,7 @@ def read_fill(line,figc,plotc):
 			if opt in ['r','g','b','c','m','y','k','w']:
 				fill['color']=s2gd.md[opt]
 			elif opt=='color':
-	 			opt  = getnextarg(optsraw) # colname
-	 			# option given form [r,g,b,a?]
-				rgbsearch  = search(r'\[\s*([0-9]*\.?[0-9]*)\s*,?\s*([0-9]*\.?[0-9]*)\s*,?\s*([0-9]*\.?[0-9]*)(.*)',opt)
-				if rgbsearch:
-		 			r,g,b=rgbsearch.group(1,2,3)
-		 			alphasearch = search(r'\s*([0-9]*\.?[0-9]*)',rgbsearch.group(4))
-		 			a = 1 if not alphasearch else alphasearch.group(1)
-		 			fill['color']='rgba(%s,%s,%s,%s)'%(r,g,b,a)
-	 			elif optsraw and strip_d(optsraw[0].lower(),'\'')=='alpha': # col->rgba
-	 				optsraw.pop(0)
-	 				opta  = getnextarg(optsraw)
-	 				r,g,b = s2gd.srd.setdefault(opt,(128,128,128))
-	 				a     = float(opta)*100
-	 				fill['color']='rgba255(%i,%i,%i,%f)'%(r,g,b,a)
-	 			else: # just colname
-	 				fill['color']=opt 	
+				fill['color'],a,optsraw = get_color(optsraw) 	
  	#
  	if not a==1: fill['alpha']=True
  	#
@@ -349,35 +365,9 @@ def read_hist(line,figc,plotc):
 	 		elif opt in ['r','g','b','c','m','y','k','w']:
 				hist['facecolor']=s2gd.md[opt]
 			elif opt in ['color','facecolor']:
-	 			opt  = getnextarg(optsraw) # colname
-	 			# option given form [r,g,b,a?]
-				rgbsearch  = search(r'\[\s*([0-9]*\.?[0-9]*)\s*,?\s*([0-9]*\.?[0-9]*)\s*,?\s*([0-9]*\.?[0-9]*)(.*)',opt)
-				if rgbsearch:
-		 			r,g,b=rgbsearch.group(1,2,3)
-		 			alphasearch = search(r'\s*([0-9]*\.?[0-9]*)',rgbsearch.group(4))
-		 			a = 1 if not alphasearch else alphasearch.group(1)
-		 			hist['facecolor']='rgba(%s,%s,%s,%s)'%(r,g,b,a)
-	 			elif optsraw and strip_d(optsraw[0].lower(),'\'')=='alpha': # col->rgba
-	 				optsraw.pop(0)
-	 				opta  = getnextarg(optsraw)
-	 				r,g,b = s2gd.srd.setdefault(opt,(128,128,128))
-	 				a     = float(opta)*100
-	 				hist['facecolor']='rgba255(%i,%i,%i,%f)'%(r,g,b,a)
-	 			else: # just colname
-	 				hist['facecolor']=opt
-	 				if hist['facecolor'] in ['r','g','b','c','m','y','k','w']:
-						hist['facecolor']=s2gd.md['facecolor']
+				hist['facecolor'],a,optsraw = get_color(optsraw)
 	 		elif opt=='edgecolor':
-	 			opt = getnextarg(optsraw) # colname, no transp
-	 			# option given form [r,g,b,a?]
-				rgbsearch  = search(r'\[\s*([0-9]*\.?[0-9]*)\s*,?\s*([0-9]*\.?[0-9]*)\s*,?\s*([0-9]*\.?[0-9]*)(.*)',opt)
-				if rgbsearch:
-		 			r,g,b=rgbsearch.group(1,2,3)
-		 			hist['edgecolor']='rgba(%s,%s,%s,%s)'%(r,g,b,a)
-	 			else: # just colname
-	 				hist['edgecolor']=opt
-	 				if hist['edgecolor'] in ['r','g','b','c','m','y','k','w']:
-						hist['edgecolor']=s2gd.md[hist['edgecolor']]
+	 			hist['edgecolor'],b,optsraw = get_color(optsraw)
 	#
  	if not a==1: hist['alpha']=True
  	#

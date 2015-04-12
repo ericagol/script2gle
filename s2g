@@ -290,7 +290,7 @@ with open(rname,'r') as sf_orig:
 					legistru  = leg_i_str.upper()
 					if   legistru == 'LOCATION':
 						leg_loc    = s2gf.strip_d(leg_stack.pop(0),'\'')
-						fig.legpos = 'pos %s'%leg_dict.setdefault(leg_loc,'tr')
+						fig.legpos = 'pos %s'%s2gd.leg_dict.setdefault(leg_loc,'tr')
 					elif legistru == 'BOXOFF':
 						fig.legopt+= ' nobox'
 					elif legistru == 'OFFSET':
