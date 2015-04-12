@@ -2,12 +2,22 @@
 
 ## General remarks
 
+### Expression within s2g lines
 Expressions to be evaluated within S2G lines will be evaluated with the context-script and hence have to be valid within that script. For example in R this would be valid:
 ```R
 N = 500
 draw = rnorm(N)
 hist(draw,'nbins',ceiling(sqrt(N)))
 ```
+
+### Color options
+Colors implemented include the usual matlab short ones, RGB triplets, RGBA (with transparency) and X11/SVG names, syntax:
+* short Matlab `...,'r',...` with one of `rgbcmyk`
+* rgb triplet `...,'color',[0.8 0.7 0.5],...` (note: normalized RGB as in Matlab)
+* rgba triplet `...,'color',[0.8 0.7 0.5 0.4],...` will use 40% transparency
+* X11/SVG name `...,'color','cornflowerblue',...` 
+* X11/SVG name+transparency `...,'color','salmon','alpha',0.7,...`
+this will be referred to in the sequel as "colorspec"
 
 ## 2D Plots
 
@@ -26,7 +36,7 @@ where `...` goes for options, accepted options are:
 - **line style**: `-` (line), `:` (dotted), `-.` (dashed-dotted), `--` (dashed),
 - **marker symbols**: (after line style symbol if any) `+`, `o`, `*`, `x`, `s` (square), `^` (triangle),
 - **line style+color**: append a color to one of the line style symbol so for example `-r` will produce a red line, basic colors are `r`, `g`, `b`,`c` (cyan), `m` (magenta), `y`, `k` (black), `w`,
-- **color**: using the name `color` followed by either a normalized RGB triplet (eg: `...,'color',[0.1 0.5 0.7],...`) or an X11 name (eg: `...,'color','salmon',...)
+- **color**: using the name `color` followed by a colorspec
 - **line width**: using the name `linewidth` followed by a non-negative number (note that a bit of fiddling might be necessary to find the proper number, it does not exactly match Matlab's width),
 - **marker size**: using the name `markersize` followed by a non-negative number, same remark applies,
 - (!) **marker face color**: the color is ignored, it just acts as a switch and the color will be the same as that of the line
@@ -55,9 +65,22 @@ hist(x,...)
 where `...` goes for options, accepted options are:
 - **number of bins** just an integer or the name `nbins` followed by an expression (e.g. in R `...,'nbins',ceiling(sqrt(N))+3,...),
 - **normalization** using the name `normalization` followed by one of `probability` (height=count/totcount), `pdf` (h=count/totcount*binwidth), `countdensity` (height=count/width) (default is just the count),
-- **face color** using the name `color` or `facecolor` followed by a matlab short (`rgbmc...`) or an X11 name or an RGB triplet or an RGBA (with transparency eg `[0.1 0.5 0.7 0.3]` will have alpha set to 30%). An alternative for transparency is to use an X11 name followed by `alpha` and a number between 0 and 1 e.g.: `...,'facecolor','cornflowerblue','alpha',0.7,...`.
-- **edge color** using the name `edgecolor` followed by a matlab short or an X11 name or an RGB triplet
 - **from to** using the name `from` followed by an expression and/or the name `to` followed by an expression, it overwrites the default range of bins (from `min(draw)` to `max(draw)`) this can be useful when comparing two histograms where one wants the bins to overlap.
+- **face color** using the name `color` or `facecolor` followed by a colorspec
+- **edge color** using the name `edgecolor` followed by a colorspec
+
+#### BAR
+- **bar width** using name `width` followed by number (interpreted in units of `xaxis`)
+- **distance between x-ticks** using name `xdticks` followed by number
+- **add first and last tick** using name `flticks`, adds ticks on both end of `xaxis`,
+- **face color** using name `color` or `facecolor` followed by colorspec
+- **edge color** using name `edgecolor` followed by colorspec
+
+#### STEM
+
+#### LOGLOG
+
+#### SEMILOGX/Y
 
 #### FILL
 

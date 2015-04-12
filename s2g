@@ -132,7 +132,7 @@ with open(rname,'r') as sf_orig:
 				sf_tmp.write('#'+l)
 			# ---------
 			# PLOT LINE
-			elif match(r'(?:plot|semilog[xy]|stem|loglog|fill|fillbetween|hist|histogram)$',marker):
+			elif match(r'(?:plot|semilog[xy]|stem|loglog|fill|fillbetween|hist|histogram|bar)$',marker):
 				# ------------------
 				# <- NEW GLE FIG? ->
 				pre_figc = figc
@@ -183,12 +183,12 @@ with open(rname,'r') as sf_orig:
 					# -> write to temp script file
 					sf_tmp.write(hist['script'])
 					# -> write to temp gle file
-					block  = ''
-					block += 'data ".__dathist%i_%i_side.dat" d%i\n'%(figc,plotc,plotc)
+					# --- xtra
+					block  = 'data ".__dathist%i_%i_side.dat" d%i\n'%(figc,plotc,plotc)
 					block += 'xmin_  = datayvalue(d%i,1)\n'%plotc
 					block += 'xmax_  = datayvalue(d%i,2)\n'%plotc
 					block += 'nbins_ = datayvalue(d%i,3)\n'%plotc
-					#
+					# --- 
 					block   += 'data ".__dathist%i_%i.dat" d%i\n'%(figc,plotc,plotc+1)
 					plotc   += 1
 					block   += 'N_ = ndata(d%i)\n'%plotc
@@ -197,12 +197,32 @@ with open(rname,'r') as sf_orig:
 					if   hist['norm']=='probability':  norm = '1.0/N_'
 					elif hist['norm']=='countdensity': norm = '1.0/width_'
 					elif hist['norm']=='pdf':          norm = '1.0/(N_*width_)'
-					block   += 'let d%i = hist d%i from xmin_ to xmax_ bins %s\n'%(plotc+1,plotc,'nbins_')
-					block   += 'let d%i = d%i*%s\n'%(plotc+1,plotc+1,norm)
-					block   += 'bar d%i color %s fill %s width %s\n'%(plotc+1,hist['edgecolor'],hist['facecolor'],'width_')
-					fig.plot+= block
-					fig.trsp = fig.trsp or hist['alpha']
-					plotc   += 1
+					block    += 'let d%i = hist d%i from xmin_ to xmax_ bins %s\n'%(plotc+1,plotc,'nbins_')
+					block    += 'let d%i = d%i*%s\n'%(plotc+1,plotc+1,norm)
+					block    += 'bar d%i color %s fill %s width %s\n'%(plotc+1,hist['edgecolor'],hist['facecolor'],'width_')
+					fig.plot += block
+					fig.trsp  = fig.trsp or hist['alpha']
+					plotc    += 1
+				elif marker == 'bar':
+					bar = s2gf.read_bar(l,figc,plotc)
+					# -> write to temp script file
+					sf_tmp.write(bar['script'])
+					# -> write to temp gle file
+					# ---
+					block     = 'data ".__datbar%i_%i.dat" d%i\n'%(figc,plotc,plotc+1)
+					block    += 'bar d%i color %s fill %s width %f\n'%(plotc+1,bar['edgecolor'],bar['facecolor'],bar['width'])
+					#
+					xaxisopt = ''
+					if not bar['flticks']:
+						xaxisopt+='nofirst nolast '
+					if bar['xdticks']:
+						xaxisopt+='dticks %s '%bar['xdticks']
+					#
+					if xaxisopt:
+						block += 'xaxis '+xaxisopt+'\n'
+					fig.plot += block
+					fig.trsp  = fig.trsp or bar['alpha']
+					plotc    += 1
  			# -------------------------
  			# AXIS LINES (pass in temp)
  			# (atm, ignore fontsize)

@@ -117,11 +117,11 @@ def get_color(optstack):
 	color = ''
 	a     = 0
 	# option given form [r,g,b,a?]
-	rgbsearch  = search(r'\[\s*([0-9]*\.?[0-9]*)\s*,?\s*([0-9]*\.?[0-9]*)\s*,?\s*([0-9]*\.?[0-9]*)(.*)',opt)
+	rgbsearch  = search(r'\[\s*([0-9]+\.?[0-9]*|\.[0-9]*)\s*[,\s]\s*([0-9]+\.?[0-9]*|\.[0-9]*)\s*[,\s]\s*([0-9]+\.?[0-9]*|\.[0-9]*)(.*)',opt)
 	if rgbsearch:
 		r,g,b  		= rgbsearch.group(1,2,3)
-		alphasearch = search(r'\s*([0-9]*\.?[0-9]*)',rgbsearch.group(4))
-		a = 1 if not alphasearch else alphasearch.group(1)
+		alphasearch = search(r'([0-9]+\.?[0-9]*|\.[0-9]*)',rgbsearch.group(4))
+		a = '1' if not alphasearch else alphasearch.group(1)
 		color = 'rgba(%s,%s,%s,%s)'%(r,g,b,a)
 	# option is x11 name + 'alpha'
 	elif optstack and strip_d(optstack[0].lower(),'\'')=='alpha': # col->rgba
@@ -285,7 +285,7 @@ def read_fill(line,figc,plotc):
  	xname  = search(r'\[\s*([a-zA-Z][a-zA-Z0-9]*)\s*',args[0]).group(1)
  	yname1 = search(r'\[(.*?),\s*fliplr',args[1]).group(1)
  	yname2 = search(r',\s*fliplr\((.*?)\)\s*\]',args[1]).group(1)
- 	a=1 # alpha
+ 	a='1' # alpha
  	if len(args)>2:
 		optsraw = args[2:]
 		while optsraw:
@@ -295,7 +295,7 @@ def read_fill(line,figc,plotc):
 			elif opt=='color':
 				fill['color'],a,optsraw = get_color(optsraw) 	
  	#
- 	if not a==1: fill['alpha']=True
+ 	if not a=='1': fill['alpha']=True
  	#
 	script = 'x__  = %s%s\n'%(xname ,s2gd.csd['EOL'])
 	script+= 'y1__ = %s%s\n'%(yname1,s2gd.csd['EOL'])
@@ -341,7 +341,8 @@ def read_hist(line,figc,plotc):
  	#				...,'Edgecolor',svgcol|matlabcol|rgb
  	#
  	xname  = strip_d(args.pop(0),'\'')
- 	a=1 # alpha
+ 	a='1' # alpha
+ 	b='1' # alpha for edge (a bit weird but up to the user to decided)
  	if args:
 	 	optsraw = args
 	 	while optsraw:
@@ -369,14 +370,10 @@ def read_hist(line,figc,plotc):
 	 		elif opt=='edgecolor':
 	 			hist['edgecolor'],b,optsraw = get_color(optsraw)
 	#
- 	if not a==1: hist['alpha']=True
+ 	if not (a=='1' or b=='1'): hist['alpha']=True
  	#
-	script = 'x__  = %s%s\n'%(xname ,s2gd.csd['EOL'])
-  	#
-  	# NEEDS WORKING, NOT JUST VEC IT, IF MULTI COLUMN THEN STACK
-  	# 
-  	vecx   = s2gd.csd['vec']%'x__'
- 	script+= 'c__ = %s%s\n'%(vecx,s2gd.csd['EOL'])
+	script = 'x__  = %s%s\n'%(xname,s2gd.csd['EOL']) 
+	vecx   = s2gd.csd['vec']%'x__'
 	dfn    = ".__dathist%i_%i.dat"%(figc,plotc)
   	script+= "%s%s\n"%(s2gd.csd['writevar'].format(dfn,'c__'),s2gd.csd['EOL'])
   	if not hist['from']:
@@ -397,3 +394,86 @@ def read_hist(line,figc,plotc):
  	#
  	hist['script'] = script
  	return hist
+#
+# +++++++++++++++++++++++++++++++++++++++++++
+# READ BAR:
+#	read a 'bar(...)' line, extracts script
+#	code to output data, generates GLE bloc
+#	to input in GLE figure
+#
+#	<in>:	line (from core part of script doc)
+#	<out>:	returns line + output line
+def read_bar(line,figc,plotc):
+	bar = {}
+	# default options
+ 	bar['edgecolor'] = 'white'
+ 	bar['facecolor'] = 'cornflowerblue'
+ 	bar['alpha'] 	 = False
+ 	bar['width']	 = 1
+ 	bar['xdticks']   = ''
+ 	bar['flticks'] 	 = False
+ 	# get plot arguments
+ 	args = get_fargs(line)
+ 	# ------------------------------------------
+ 	# SCRIPT -----------------------------------
+ 	# generate script to output appropriate data
+ 	# > syntax:
+ 	# 	command: bar(x,...)
+ 	#	 			...,'Normalization','count|countdensity|probability|pdf|cumcount|cdf'
+ 	#				...,'Facecolor',svgcol|matlabcol|rgb|rgba,'Alpha'?,0.8
+ 	#				...,'Edgecolor',svgcol|matlabcol|rgb
+ 	#
+ 	xname  = strip_d(args.pop(0),'\'')
+ 	yname  = ''
+ 	a='1' # alpha
+ 	b='1' # alpha for edge (a bit weird but up to the user to decided)
+ 	if args and not (search(r'^\s*\'',args[0]) or args[0].isdigit()):
+ 		yname = strip_d(args.pop(0),'\'')
+ 	if args:
+	 	optsraw = args
+	 	while optsraw:
+	 		opt = getnextarg(optsraw)
+	 		if opt.isdigit() or opt=='width':
+	 			if opt=='width':
+	 				opt = getnextarg(optsraw)
+	 			bar['width'] = float(opt)
+	 		elif opt=='xdticks':
+	 			opt = getnextarg(optsraw)
+	 			bar['xdticks'] = opt
+	 		elif opt=='flticks':
+	 			bar['flticks'] = True
+	 		elif opt in ['r','g','b','c','m','y','k','w']:
+				bar['facecolor']=s2gd.md[opt]
+			elif opt in ['color','facecolor']:
+				bar['facecolor'],a,optsraw = get_color(optsraw)
+	 		elif opt=='edgecolor':
+	 			bar['edgecolor'],b,optsraw = get_color(optsraw)
+	#
+ 	if not (a=='1' or b=='1'): bar['alpha']=True
+ 	#
+	script = 'x__  = %s%s\n'%(xname ,s2gd.csd['EOL']) 
+  	vecx   = s2gd.csd['vec']%'x__'
+	if yname:
+		script+= 'y__ = %s%s\n'%(yname,s2gd.csd['EOL'])
+		vecy   = s2gd.csd['vec']%'y__'
+		script+= 'c__ = %s%s\n'%(s2gd.csd['cbind']%(vecx,vecy),s2gd.csd['EOL'])
+	else:
+		if not bar['xdticks']:
+			bar['xdticks'] = '1'
+	 	script+= 'c__ = %s%s\n'%(vecx,s2gd.csd['EOL'])
+	dfn    = ".__datbar%i_%i.dat"%(figc,plotc)
+  	script+= "%s%s\n"%(s2gd.csd['writevar'].format(dfn,'c__'),s2gd.csd['EOL'])
+ #  	if not bar['from']:
+ #  		script+= 'xmin__ = %s%s\n'%(s2gd.csd['minvec']%vecx,s2gd.csd['EOL'])
+ # 	else:
+ # 		script+= 'xmin__ = %s%s\n'%(bar['from'],s2gd.csd['EOL'])
+ # 	if not bar['to']:
+ # 		script+= 'xmax__ = %s%s\n'%(s2gd.csd['maxvec']%vecx,s2gd.csd['EOL'])
+	# else:
+	#  	script+= 'xmax__ = %s%s\n'%(bar['to'],s2gd.csd['EOL'])
+ # 	script+= 'c2__ = %s%s\n'%(s2gd.csd['rbind']%(s2gd.csd['rbind']%('xmin__','xmax__'),'nbins__'),s2gd.csd['EOL']) 
+	# dfn2   = ".__datbar%i_%i_side.dat"%(figc,plotc)
+ #  	script+= "%s%s\n"%(s2gd.csd['writevar'].format(dfn2,'c2__'),s2gd.csd['EOL'])
+ 	#
+ 	bar['script'] = script
+ 	return bar
