@@ -410,7 +410,7 @@ def read_bar(line,figc,plotc):
  	bar['facecolor'] = 'cornflowerblue'
  	bar['alpha'] 	 = False
  	bar['width']	 = 1
- 	bar['xdticks']   = ''
+ 	bar['xdticks']   = '1'
  	bar['flticks'] 	 = False
  	# get plot arguments
  	args = get_fargs(line)
@@ -458,22 +458,9 @@ def read_bar(line,figc,plotc):
 		vecy   = s2gd.csd['vec']%'y__'
 		script+= 'c__ = %s%s\n'%(s2gd.csd['cbind']%(vecx,vecy),s2gd.csd['EOL'])
 	else:
-		if not bar['xdticks']:
-			bar['xdticks'] = '1'
 	 	script+= 'c__ = %s%s\n'%(vecx,s2gd.csd['EOL'])
+	#
 	dfn    = ".__datbar%i_%i.dat"%(figc,plotc)
   	script+= "%s%s\n"%(s2gd.csd['writevar'].format(dfn,'c__'),s2gd.csd['EOL'])
- #  	if not bar['from']:
- #  		script+= 'xmin__ = %s%s\n'%(s2gd.csd['minvec']%vecx,s2gd.csd['EOL'])
- # 	else:
- # 		script+= 'xmin__ = %s%s\n'%(bar['from'],s2gd.csd['EOL'])
- # 	if not bar['to']:
- # 		script+= 'xmax__ = %s%s\n'%(s2gd.csd['maxvec']%vecx,s2gd.csd['EOL'])
-	# else:
-	#  	script+= 'xmax__ = %s%s\n'%(bar['to'],s2gd.csd['EOL'])
- # 	script+= 'c2__ = %s%s\n'%(s2gd.csd['rbind']%(s2gd.csd['rbind']%('xmin__','xmax__'),'nbins__'),s2gd.csd['EOL']) 
-	# dfn2   = ".__datbar%i_%i_side.dat"%(figc,plotc)
- #  	script+= "%s%s\n"%(s2gd.csd['writevar'].format(dfn2,'c2__'),s2gd.csd['EOL'])
- 	#
  	bar['script'] = script
  	return bar
