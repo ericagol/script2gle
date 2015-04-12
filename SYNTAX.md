@@ -17,6 +17,7 @@ Colors implemented include the usual matlab short ones, RGB triplets, RGBA (with
 * rgba triplet `...,'color',[0.8 0.7 0.5 0.4],...` will use 40% transparency
 * X11/SVG name `...,'color','cornflowerblue',...` 
 * X11/SVG name+transparency `...,'color','salmon','alpha',0.7,...`
+
 this will be referred to in the sequel as "colorspec"
 
 ## 2D Plots
@@ -63,9 +64,9 @@ Accepted format
 hist(x,...)
 ```
 where `...` goes for options, accepted options are:
-- **number of bins** just an integer or the name `nbins` followed by an expression (e.g. in R `...,'nbins',ceiling(sqrt(N))+3,...),
+- **number of bins** just an integer or the name `nbins` followed by an expression (e.g. in R `...,'nbins',ceiling(sqrt(N))+3,...`),
 - **normalization** using the name `normalization` followed by one of `probability` (height=count/totcount), `pdf` (h=count/totcount*binwidth), `countdensity` (height=count/width) (default is just the count),
-- **from to** using the name `from` followed by an expression and/or the name `to` followed by an expression, it overwrites the default range of bins (from `min(draw)` to `max(draw)`) this can be useful when comparing two histograms where one wants the bins to overlap.
+- **x range** using the name `from` followed by an expression and/or the name `to` followed by an expression, it overwrites the default range of bins (from `min(draw)` to `max(draw)`) this can be useful when comparing two histograms where one wants the bins to overlap.
 - **face color** using the name `color` or `facecolor` followed by a colorspec
 - **edge color** using the name `edgecolor` followed by a colorspec
 
