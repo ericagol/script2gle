@@ -1,3 +1,10 @@
+# SHARED VARIABLES
+#
+csd = {} # current script dictionary, this is set by S2G
+		 # by default, set to matlab (see end of this file)
+
+# DICTIONARIES
+#
 # start of line markers
 # > can appear but line won't be considered
 ignored = r'|'.join([r'^\s*home',r'^\s*clear',r'^\s*close'])
@@ -27,14 +34,19 @@ script_dict_JL = {
 	'append'	: 'include',
 	'writevar'	: 'writecsv(\"{0}\",{1})', # with .format not %
 	'vec'		: '%s[:]',
+	'asmatrix' 	: '%s',
 	'minvec'	: 'minimum(%s)',
 	'maxvec'	: 'maximum(%s)',
 	'lenvec'	: 'length(%s)',
+	'nrows'		: 'size(%s,1)',
+	'ncols'		: 'size(%s,2)',
+	'numel'		: 'prod(size(%s))',
+	'tifrow' 	: 'ifelse(size({0},1)>1,{0},{0}\')',
 	'autobins'  : '({0}<10)*{0}+(10<={0}<30)*10+(30<={0})*int(round(sqrt({0})))',
 	'EOL'		: '',
 	'cbind' 	: '[%s %s]',
 	'rbind'		: '[%s;%s]',
-	'span' 		: '1:prod(size(%s))',
+	'span' 		: '1:%s',
 	'exit' 		: 'exit()',
 	'comment' 	: '\#',
 	'caller'	: 'julia'
@@ -43,14 +55,19 @@ script_dict_R = {
 	'append'	: 'source',
 	'writevar'	: 'write.table({1},file=\'{0}\',row.names=F,col.names=F)',
 	'vec'		: 'c(%s)',
+	'asmatrix' 	: 'as.matrix(%s)',
 	'minvec'	: 'min(%s)',
 	'maxvec'	: 'max(%s)',
 	'lenvec'	: 'length(%s)',
+	'nrows'		: 'nrow(%s)',
+	'ncols'		: 'ncol(%s)',
+	'numel'		: 'length(%s)',
+	'tifrow' 	: 'if(nrow{0}>1){{0}}else{t({0})}',
 	'autobins'  : '({0}<10)*{0}+(10<={0} && {0}<30)*10+(30<={0})*round(sqrt({0}))',
 	'EOL'		: '',
 	'cbind' 	: 'cbind(%s,%s)',
 	'rbind'		: 'rbind(%s,%s)',
-	'span' 		: '1:length(%s)',
+	'span' 		: '1:%s',
 	'exit'		: 'q()',
 	'comment'	: '\#',
 	'caller'	: 'Rscript'
@@ -59,19 +76,23 @@ script_dict_M = {
 	'append'	: 'run',
 	'writevar'	: 'save(\'-ascii\',\'{0}\',\'{1}\')',
 	'vec'		: '%s(:)',
+	'asmatrix' 	: '%s',
 	'minvec'	: 'min(%s)',
 	'maxvec'	: 'max(%s)',
 	'lenvec' 	: 'length(%s)',
+	'nrows'		: 'size(%s,1)',
+	'ncols' 	: 'size(%s,2)',
+	'numel' 	: 'numel(%s)',
+	'tifrow' 	: 'reshape({0}, (size({0},1)>1)*size({0},1)+(size({0},1)==1)*size({0},2), (size({0},1)>1)*size({0},2)+(size({0},1)==1)*size({0},1))',
 	'autobins'	: '({0}<10)*{0}+(10<={0} && {0}<30)*10+(30<={0})*round(sqrt({0}))',
 	'EOL'		: ';',
 	'cbind'		: '[%s %s]',
 	'rbind'		: '[%s;%s]',
-	'span'		: '1:prod(size(%s))',
+	'span'		: '1:%s',
 	'exit'		: 'exit()',
 	'comment' 	: '\%',
 	'caller'	: 'octave -q'
 }
-csd = {} # current script dictionary, this is set by S2G
 #
 # legend position conversion matlab/octave > gle
 #
@@ -263,3 +284,16 @@ svg2rgb_dict = {
 }
 svg2rgb_dict = {k.lower() : v for k, v in svg2rgb_dict.items()}
 srd = svg2rgb_dict
+
+# PARSER SPECIFICS
+keyclose = {
+	'\''	: '\'',
+	'\"'	: '\"',
+	'['		: ']',
+	'('		: ')',
+	'{'		: '}'
+}
+keyopen = keyclose.keys()
+
+# Intialization of global variable if needed
+csd = script_dict_M

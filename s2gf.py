@@ -21,7 +21,7 @@ shut_l       = lambda l: [e+r'$' for e in l]
 # check is string is in list
 rem_esp 	 = lambda l: [sub(' ','',e) for e in l]
 # check if pattern is open
-check_open   = lambda s,d1,d2: s_cld(s) if d1=='\'' else not bool(cnt_d(s,d1)-cnt_d(s,d2))
+# check_open   = lambda s,d1,d2: s_cld(s) if d1=='\'' else not bool(cnt_d(s,d1)-cnt_d(s,d2))
 # get first argument (cf getfargs)
 getarg1      = lambda l: strip_d(get_fargs(l)[0],'\'')
 # get next arg
@@ -36,39 +36,60 @@ getnextargNL = lambda lst: strip_d(lst.pop(0),'\'')
 # GET FARGS :
 #	get arguments of function str
 #
-#	<in>:	string like plot(x,y,'+r')
-# 	<out>:	list of arguments
+#	<in>:	string like plot(x,y,'linewidth',2.0)
+# 	<out>:	list of arguments ['x','y','linewidth','2.0']
 def get_fargs(line):
 	# get core
- 	core = search(r'^\s*(?:\w+)\((.*?)(?:\)\s*;?\s*)((?:%s).*)?$'%s2gd.csd['comment'],line).group(1)
-	# split core with commas
-	spl  = core.split(',')
-	spl  = [v.strip() for v in spl] # remove trailing spaces
-	# merge '', (), [], {} that might have been broken (see CLOSE_SPLIT)
-	args = spl
-	for delim in [['\'','\''],['(',')'],['[',']'],['{','}']]:
-		args = close_split(delim[0],delim[1],args)
-	return args
-# +++++++++++++++++++++++++++++++++++++++++
-# CLOSE SPLIT:
-# 	close broken patterns after .split(',')
-#
-#	<in>:	delimiters and list coming from
-#			a split along the commas
-# 	<out>: 	list of strings reconstructed
-#			along broken patterns
-def close_split(d1,d2,lst):
-	lst2,tmp  = [],''
-	for s in lst:
-		tmp += s+','
-		if check_open(tmp,d1,d2):
-			lst2.append(tmp[:-1])
-			tmp = ''
-	if not lst2:
-		lst2 = lst
-	elif tmp[:-1]:
-		lst2.append(tmp[:-1])
-	return lst2
+ 	stack = search(
+ 				r'^\s*(?:\w+)\(\s*'	# match "plot("
+ 				r'(.*?)'			# all arguments
+ 				r'(?:\)\s*;?\s*)'	# end bracket and rest of line (possible comm)
+				r'((?:%s).*)?$'%s2gd.csd['comment'],
+				line).group(1)
+ 	#
+ 	arglst = []
+	while stack:
+		stack  = stack.strip()
+		curidx = 0
+		maxidx = len(stack)
+		curarg = ''
+		key    = stack[0]
+		isopen = key in s2gd.keyopen
+		while curidx<maxidx-1 and isopen:
+			curchar = stack[curidx]
+			curarg += curchar
+			curidx += 1
+			nxtchar = stack[curidx]
+			isopen  = not(nxtchar==s2gd.keyclose[key])
+		while curidx<maxidx and not(stack[curidx]==','):
+			curarg += stack[curidx]
+			curidx += 1
+		stack = stack[curidx+1:]
+		arglst.append(curarg)
+		curarg = ''
+	#
+ 	return arglst
+
+# # +++++++++++++++++++++++++++++++++++++++++
+# # CLOSE SPLIT:
+# # 	close broken patterns after .split(',')
+# #
+# #	<in>:	delimiters and list coming from
+# #			a split along the commas
+# # 	<out>: 	list of strings reconstructed
+# #			along broken patterns
+# def close_split(d1,d2,lst):
+# 	lst2,tmp  = [],''
+# 	for s in lst:
+# 		tmp += s+','
+# 		if check_open(tmp,d1,d2):
+# 			lst2.append(tmp[:-1])
+# 			tmp = ''
+# 	if not lst2:
+# 		lst2 = lst
+# 	elif tmp[:-1]:
+# 		lst2.append(tmp[:-1])
+# 	return lst2
 #
 # +++++++++++++++++++++++++++++++++++++++++++
 # ARRAY X
@@ -163,7 +184,7 @@ def read_plot(line, figc, plotc):
 	sta = 2; # index of args where options start
 	# case one var: plot(x), plot(x,'+r'), ...
 	if len(args)==1 or match(r'^\s*\'',args[1]):
-		script = 'x__ = %s%s\n'%(s2gd.csd['span']%args[0],s2gd.csd['EOL'])
+		script = 'x__ = %s%s\n'%(s2gd.csd['span']%s2gd.csd['numel']%args[0],s2gd.csd['EOL'])
 		script+= 'y__ = %s%s\n'%(args[0],s2gd.csd['EOL'])
 		sta    = 1
 	# case two vars plot(x,y,'+r')
@@ -375,7 +396,7 @@ def read_hist(line,figc,plotc):
 	script = 'x__  = %s%s\n'%(xname,s2gd.csd['EOL']) 
 	vecx   = s2gd.csd['vec']%'x__'
 	dfn    = ".__dathist%i_%i.dat"%(figc,plotc)
-  	script+= "%s%s\n"%(s2gd.csd['writevar'].format(dfn,'c__'),s2gd.csd['EOL'])
+  	script+= '%s%s\n'%(s2gd.csd['writevar'].format(dfn,'x__'),s2gd.csd['EOL'])
   	if not hist['from']:
   		script+= 'xmin__ = %s%s\n'%(s2gd.csd['minvec']%vecx,s2gd.csd['EOL'])
  	else:
@@ -390,7 +411,7 @@ def read_hist(line,figc,plotc):
  		script+='nbins__ = %s%s\n'%(nbins,s2gd.csd['EOL'])
  	script+= 'c2__ = %s%s\n'%(s2gd.csd['rbind']%(s2gd.csd['rbind']%('xmin__','xmax__'),'nbins__'),s2gd.csd['EOL']) 
 	dfn2   = ".__dathist%i_%i_side.dat"%(figc,plotc)
-  	script+= "%s%s\n"%(s2gd.csd['writevar'].format(dfn2,'c2__'),s2gd.csd['EOL'])
+  	script+= '%s%s\n'%(s2gd.csd['writevar'].format(dfn2,'c2__'),s2gd.csd['EOL'])
  	#
  	hist['script'] = script
  	return hist
@@ -425,10 +446,10 @@ def read_bar(line,figc,plotc):
  	#
  	xname  = strip_d(args.pop(0),'\'')
  	yname  = ''
- 	a='1' # alpha
- 	b='1' # alpha for edge (a bit weird but up to the user to decided)
  	if args and not (search(r'^\s*\'',args[0]) or args[0].isdigit()):
  		yname = strip_d(args.pop(0),'\'')
+ 	a='1' # alpha
+ 	b='1' # alpha for edge (a bit weird but up to the user to decided)
  	if args:
 	 	optsraw = args
 	 	while optsraw:
@@ -451,16 +472,24 @@ def read_bar(line,figc,plotc):
 	#
  	if not (a=='1' or b=='1'): bar['alpha']=True
  	#
-	script = 'x__  = %s%s\n'%(xname ,s2gd.csd['EOL']) 
-  	vecx   = s2gd.csd['vec']%'x__'
+	script = 'x__  = %s%s\n'%(xname ,s2gd.csd['EOL'])
 	if yname:
-		script+= 'y__ = %s%s\n'%(yname,s2gd.csd['EOL'])
-		vecy   = s2gd.csd['vec']%'y__'
-		script+= 'c__ = %s%s\n'%(s2gd.csd['cbind']%(vecx,vecy),s2gd.csd['EOL'])
+		vecx    = s2gd.csd['vec']%'x__'
+		script += 'y__ = %s%s\n'%(s2gd.csd['asmatrix']%yname,s2gd.csd['EOL'])
+		script += 'y__ = %s%s\n'%(s2gd.csd['tifrow'].format('y__'),s2gd.csd['EOL'])
+		script += 'c__ = %s%s\n'%(s2gd.csd['cbind']%(vecx,'y__'),s2gd.csd['EOL'])
 	else:
-	 	script+= 'c__ = %s%s\n'%(vecx,s2gd.csd['EOL'])
+	 	script += 'y__ = %s%s\n'%(s2gd.csd['asmatrix']%'x__',s2gd.csd['EOL'])
+	 	script += 'y__ = %s%s\n'%(s2gd.csd['tifrow'].format('y__'),s2gd.csd['EOL'])
+	 	script += 'lsp = %s%s\n'%(s2gd.csd['span']%s2gd.csd['nrows']%'y__',s2gd.csd['EOL'])
+	 	script += 'c__ = %s%s\n'%(s2gd.csd['cbind']%(s2gd.csd['vec']%'lsp','y__'),s2gd.csd['EOL'])
+	#
+ 	script += 'ncols__ = %s%s\n'%(s2gd.csd['ncols']%'y__',s2gd.csd['EOL'])
 	#
 	dfn    = ".__datbar%i_%i.dat"%(figc,plotc)
-  	script+= "%s%s\n"%(s2gd.csd['writevar'].format(dfn,'c__'),s2gd.csd['EOL'])
+  	script+= '%s%s\n'%(s2gd.csd['writevar'].format(dfn,'c__'),s2gd.csd['EOL'])
+  	script+= 'c2__ = %s%s\n'%('ncols__',s2gd.csd['EOL']) 
+  	dfn2   = ".__datbar%i_%i_side.dat"%(figc,plotc)
+  	script+= '%s%s\n'%(s2gd.csd['writevar'].format(dfn2,'c2__'),s2gd.csd['EOL'])
  	bar['script'] = script
  	return bar

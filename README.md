@@ -52,7 +52,11 @@ The workflow goes as follows ([see also here](#workf_ex)):
 
 I'm assuming that your `$PATH` variable has been updated accordingly so that you can call each of those in the terminal respectively with `gle`, `julia`, `octave`, `matlab` or `R`.
 
-**Side Remark** (*Ignore if using OSX or Linux*), if you intend to use transparency (see `fill` command), then GLE needs to be able to run with `cairo` option, nothing to be done on Linux (tested on Fedora) or OSX (tested on Yosemite) but I haven't tested it on Windows (but it should also work). 
+**Side Remark** (*Ignore if using OSX or Linux*), if you intend to use transparency (see `fill` command), then GLE needs to be able to run with `cairo` option, you can test this by running
+```
+gle -info
+```
+the output should have the following line: ```Cairo rendering support: Yes```.
 
 A warning may be issued if you're using transparency in the draft mode (without the `-tex` option), and the font might be changed to agree with cairo. You can safely ignore this and if it bothers you, re-compile with `-tex` option.
 

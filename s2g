@@ -71,10 +71,8 @@ elif fext=='.m':
 s2gd.ignored+=r'|^\s*%s'%s2gd.csd['comment']
 s2gd.markers = r'|'.join([s2gd.markers,s2gd.csd['append']])
 
-	# if no_octave:
-	# 	caller = 'matlab -nodesktop -nosplash -noFigureWindows -r'
-	# else:
-	# 	caller = 'octave -q'
+if no_octave:
+	s2gd.csd['caller'] = 'matlab -nodesktop -nosplash -noFigureWindows -r'
 #
 # == MAIN BLOCK =================
 # create temp matlab file which
@@ -154,7 +152,7 @@ with open(rname,'r') as sf_orig:
 					# -> write to temp script file
 					sf_tmp.write(plt['script'])
 					# -> write to temp gle file
-					block = 'data ".__datplot%i_%i.dat" d%i=c1,c2\n'%(figc,plotc,plotc)
+					block = 'data ".__datplot%i_%i.dat"\n'%(figc,plotc)
 					block+= 'd%i'%plotc+									\
 								' impulses '*bool(match(r'stem',marker))+ 	\
 								plt['lstyle']+								\
@@ -174,7 +172,7 @@ with open(rname,'r') as sf_orig:
 					# -> write to temp script file
 					sf_tmp.write(fill['script'])
 					# -> write to temp gle file
-					block    = 'data ".__datfill%i_%i.dat" d%i=c1,c2 d%i=c1,c3\n'%(figc,plotc,plotc,plotc+1)
+					block    = 'data ".__datfill%i_%i.dat"\n'%(figc,plotc)
 					block   += 'fill d%i,d%i color %s'%(plotc,plotc+1,fill['color'])
 					fig.plot+= block
 					fig.trsp = fig.trsp or fill['alpha']
@@ -184,12 +182,12 @@ with open(rname,'r') as sf_orig:
 					sf_tmp.write(hist['script'])
 					# -> write to temp gle file
 					# --- xtra
-					block  = 'data ".__dathist%i_%i_side.dat" d%i\n'%(figc,plotc,plotc)
+					block  = 'data ".__dathist%i_%i_side.dat" d%i\n'%(figc,plotc,plotc) # has to name: 1 col
 					block += 'xmin_  = datayvalue(d%i,1)\n'%plotc
 					block += 'xmax_  = datayvalue(d%i,2)\n'%plotc
 					block += 'nbins_ = datayvalue(d%i,3)\n'%plotc
 					# --- 
-					block   += 'data ".__dathist%i_%i.dat" d%i\n'%(figc,plotc,plotc+1)
+					block   += 'data ".__dathist%i_%i.dat" d%i\n'%(figc,plotc,plotc+1) # has to name: 1 col
 					plotc   += 1
 					block   += 'N_ = ndata(d%i)\n'%plotc
 					block   += 'width_ = (xmax_-xmin_)/%s\n'%('nbins_')
@@ -208,11 +206,16 @@ with open(rname,'r') as sf_orig:
 					# -> write to temp script file
 					sf_tmp.write(bar['script'])
 					# -> write to temp gle file
-					# ---
-					block     = 'data ".__datbar%i_%i.dat" d%i\n'%(figc,plotc,plotc+1)
-					block    += 'bar d%i color %s fill %s width %f\n'%(plotc+1,bar['edgecolor'],bar['facecolor'],bar['width'])
+					# --- xtra
+					block  = 'data ".__datbar%i_%i_side.dat"\n'%(figc,plotc,plotc)
+					block += 'ncols_ = datayvalue(d%i,1)\n'%(plotc)
+					block += 'bstr_$ = "d%i"\n'%(plotc+1)
+					block += 'for k=1 to ncols_-1, bstr_$=bstr_$+",d"+num$(k),next k\n'
+					# # ---
+					# block  = 'data ".__datbar%i_%i.dat" bstr_$ \n'%(figc,plotc)
+					# block += 'bar d%i color %s fill %s width %f\n'%(plotc+1,bar['edgecolor'],bar['facecolor'],bar['width'])
 					#
-					xaxisopt = ''
+					xaxisopt  = ''
 					if not bar['flticks']:
 						xaxisopt+='nofirst nolast '
 					if bar['xdticks']:
@@ -220,9 +223,9 @@ with open(rname,'r') as sf_orig:
 					#
 					if xaxisopt:
 						block += 'xaxis '+xaxisopt+'\n'
-					fig.plot += block
-					fig.trsp  = fig.trsp or bar['alpha']
-					plotc    += 1
+					fig.plot  += block
+					fig.trsp   = fig.trsp or bar['alpha']
+					plotc     += 1
  			# -------------------------
  			# AXIS LINES (pass in temp)
  			# (atm, ignore fontsize)
