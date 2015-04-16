@@ -46,7 +46,9 @@ def get_fargs(line):
  				r'(?:\)\s*;?\s*)'	# end bracket and rest of line (possible comm)
 				r'((?:%s).*)?$'%s2gd.csd['comment'],
 				line).group(1)
- 	#
+ 	# browse the chars in arglst, separate with commas
+ 	# but not when within expression such as 
+ 	# '..,..' or "..,.." or [..,..] etc.
  	arglst = []
 	while stack:
 		stack  = stack.strip()
