@@ -49,7 +49,7 @@ fext 	   = fext.lower()
 fname2 	   = fname.split('/')
 fname2 	   = fname2[-1] 		# only name of file
 gname  	   = fname+'.gle'
-s_tmp      = '.__%s_script_tmp'%fname
+s_tmp      = '%s%s_script_tmp'%(s2gd.tind,fname)
 s2gd.sname = fname2
 figlist    = []
 #
@@ -131,7 +131,7 @@ with open(rname,'r') as sf_orig:
 					# -> write to temp script file
 					sf_tmp.write(plt['script'])
 					# -> write to temp gle file
-					block = 'data ".__datplot%i_%i.dat" d%i\n'%(curfig.fignum,curfig.plotcntr,curfig.plotcntr)
+					block = 'data "%sdatplot%i_%i.dat" d%i\n'%(s2gd.tind,curfig.fignum,curfig.plotcntr,curfig.plotcntr)
 					block+= 'd%i'%curfig.plotcntr+									\
 								' impulses '*bool(match(r'stem',marker))+ 	\
 								plt['lstyle']+								\
@@ -152,7 +152,7 @@ with open(rname,'r') as sf_orig:
 					# -> write to temp script file
 					sf_tmp.write(fill['script'])
 					# -> write to temp gle file
-					block    = 'data ".__datfill%i_%i.dat" d%i d%i\n'%(curfig.fignum,curfig.plotcntr,curfig.plotcntr,curfig.plotcntr+1)
+					block    = 'data "%sdatfill%i_%i.dat" d%i d%i\n'%(s2gd.tind,curfig.fignum,curfig.plotcntr,curfig.plotcntr,curfig.plotcntr+1)
 					block   += 'fill d%i,d%i color %s'%(curfig.plotcntr,curfig.plotcntr+1,fill['color'])
 					curfig.plot+=block
 					curfig.trsp = curfig.trsp or fill['alpha']
@@ -162,12 +162,12 @@ with open(rname,'r') as sf_orig:
 					sf_tmp.write(hist['script'])
 					# -> write to temp gle file
 					# --- xtra
-					block  = 'data ".__dathist%i_%i_side.dat" d%i\n'%(curfig.fignum,curfig.plotcntr,curfig.plotcntr) # has to name: 1 col
+					block  = 'data "%sdathist%i_%i_side.dat" d%i\n'%(s2gd.tind,curfig.fignum,curfig.plotcntr,curfig.plotcntr) # has to name: 1 col
 					block += 'xmin_  = datayvalue(d%i,1)\n'%curfig.plotcntr
 					block += 'xmax_  = datayvalue(d%i,2)\n'%curfig.plotcntr
 					block += 'nbins_ = datayvalue(d%i,3)\n'%curfig.plotcntr
 					# --- 
-					block   += 'data ".__dathist%i_%i.dat" d%i\n'%(curfig.fignum,curfig.plotcntr,curfig.plotcntr+1) # has to name: 1 col
+					block   += 'data "%sdathist%i_%i.dat" d%i\n'%(s2gd.tind,curfig.fignum,curfig.plotcntr,curfig.plotcntr+1) # has to name: 1 col
 					curfig.plotcntr   += 1
 					block   += 'N_ = ndata(d%i)\n'%curfig.plotcntr
 					block   += 'width_ = (xmax_-xmin_)/%s\n'%('nbins_')
@@ -187,12 +187,12 @@ with open(rname,'r') as sf_orig:
 					sf_tmp.write(bar['script'])
 					# -> write to temp gle file
 					# --- xtra
-					block  = 'data ".__datbar%i_%i_side.dat"\n'%(curfig.fignum,curfig.plotcntr,curfig.plotcntr)
+					block  = 'data "%sdatbar%i_%i_side.dat"\n'%(s2gd.tind,curfig.fignum,curfig.plotcntr,curfig.plotcntr)
 					block += 'ncols_ = datayvalue(d%i,1)\n'%(curfig.plotcntr)
 					block += 'bstr_$ = "d%i"\n'%(curfig.plotcntr+1)
 					block += 'for k=1 to ncols_-1, bstr_$=bstr_$+",d"+num$(k),next k\n'
 					# # ---
-					# block  = 'data ".__datbar%i_%i.dat" bstr_$ \n'%(curfig.fignum,curfig.plotcntr)
+					# block  = 'data "%sdatbar%i_%i.dat" bstr_$ \n'%(s2gd.tind,curfig.fignum,curfig.plotcntr)
 					# block += 'bar d%i color %s fill %s width %f\n'%(curfig.plotcntr+1,bar['edgecolor'],bar['facecolor'],bar['width'])
 					#
 					xaxisopt  = ''
@@ -356,8 +356,8 @@ else: # just copy gle files
 # CLEANUP
 files = listdir('.')
 for f in files:
-	if f.startswith('.__'):
+	if f.startswith(s2gd.tind):
 		if f.endswith('.pdf') or f.endswith('.png'):
-			rename(f,f.strip('.__'))
+			rename(f,f.strip(s2gd.tind))
 		else:
 			if not devmode: remove(f)

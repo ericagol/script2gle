@@ -191,7 +191,7 @@ def read_plot(line, figc, plotc):
 	vecx   = s2gd.csd['vec']%'x__'
 	vecy   = s2gd.csd['vec']%'y__'
 	script+= 'c__ = %s%s\n'%(s2gd.csd['cbind']%(vecx,vecy),s2gd.csd['EOL'])
-	dfn    = ".__datplot%i_%i.dat"%(figc,plotc)
+	dfn    = "%sdatplot%i_%i.dat"%(s2gd.tind,figc,plotc)
 	script+= "%s%s\n"%(s2gd.csd['writevar'].format(dfn,'c__'),s2gd.csd['EOL'])
 	#
 	plt['script'] = script
@@ -322,7 +322,7 @@ def read_fill(line,figc,plotc):
   	vecy1  = s2gd.csd['vec']%'y1__'
   	vecy2  = s2gd.csd['vec']%'y2__'
  	script+= 'c__ = %s%s\n'%(s2gd.csd['cbind']%(s2gd.csd['cbind']%(vecx,vecy1),vecy2),s2gd.csd['EOL'])
-	dfn    = '.__datfill%i_%i.dat'%(figc,plotc)
+	dfn    = '%sdatfill%i_%i.dat'%(s2gd.tind,figc,plotc)
   	script+= '%s%s\n'%(s2gd.csd['writevar'].format(dfn,'c__'),s2gd.csd['EOL'])
  	#
  	fill['script'] = script
@@ -391,7 +391,7 @@ def read_hist(line,figc,plotc):
  	#
 	script = 'x__  = %s%s\n'%(xname,s2gd.csd['EOL']) 
 	vecx   = s2gd.csd['vec']%'x__'
-	dfn    = ".__dathist%i_%i.dat"%(figc,plotc)
+	dfn    = "%sdathist%i_%i.dat"%(s2gd.tind,figc,plotc)
   	script+= '%s%s\n'%(s2gd.csd['writevar'].format(dfn,'x__'),s2gd.csd['EOL'])
   	if not hist['from']:
   		script+= 'xmin__ = %s%s\n'%(s2gd.csd['minvec']%vecx,s2gd.csd['EOL'])
@@ -406,7 +406,7 @@ def read_hist(line,figc,plotc):
  	else:
  		script+='nbins__ = %s%s\n'%(nbins,s2gd.csd['EOL'])
  	script+= 'c2__ = %s%s\n'%(s2gd.csd['rbind']%(s2gd.csd['rbind']%('xmin__','xmax__'),'nbins__'),s2gd.csd['EOL']) 
-	dfn2   = ".__dathist%i_%i_side.dat"%(figc,plotc)
+	dfn2   = "%sdathist%i_%i_side.dat"%(s2gd.tind,figc,plotc)
   	script+= '%s%s\n'%(s2gd.csd['writevar'].format(dfn2,'c2__'),s2gd.csd['EOL'])
  	#
  	hist['script'] = script
@@ -482,10 +482,10 @@ def read_bar(line,figc,plotc):
 	#
  	script += 'ncols__ = %s%s\n'%(s2gd.csd['ncols']%'y__',s2gd.csd['EOL'])
 	#
-	dfn    = ".__datbar%i_%i.dat"%(figc,plotc)
+	dfn    = "%sdatbar%i_%i.dat"%(s2gd.tind,figc,plotc)
   	script+= '%s%s\n'%(s2gd.csd['writevar'].format(dfn,'c__'),s2gd.csd['EOL'])
   	script+= 'c2__ = %s%s\n'%('ncols__',s2gd.csd['EOL']) 
-  	dfn2   = ".__datbar%i_%i_side.dat"%(figc,plotc)
+  	dfn2   = "%sdatbar%i_%i_side.dat"%(s2gd.tind,figc,plotc)
   	script+= '%s%s\n'%(s2gd.csd['writevar'].format(dfn2,'c2__'),s2gd.csd['EOL'])
  	bar['script'] = script
  	return bar
