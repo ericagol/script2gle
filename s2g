@@ -76,20 +76,27 @@ s2gd.markers = r'|'.join([s2gd.markers,s2gd.csd['append']])
 # outputs data file for each plot
 with open(rname,'r') as sf_orig: 
 	with open(s_tmp+fext,'w+') as sf_tmp:
+		#
 		# script lines > stack of lines to process
 		script_stack = sf_orig.readlines()
+		#
 		while script_stack:
+			#
 			# sanitize by gathering multiline expressions (EOL with '...')
 			l,script_stack = s2gf.close_ellipsis(script_stack.pop(0),script_stack)
-			# ignore lines like "home", "clear", comments,...
-			if s2gf.match_start(s2gd.ignored,l): continue
 			#
+			# ignore lines starting with ('home','clear', comment symbol,...)
+			if s2gf.match_start(s2gd.ignored,l): 
+				continue
+			#
+			# get marker if any ('plot','figure',...)
 			marker = s2gf.match_start(s2gd.markers, l)
 			if not marker:
 				sf_tmp.write(l)
 				continue
 			else:
 				marker = marker.group(1)
+			#
 			# ---------------------
 			# HOLD ON/OFF somewhere
 			if marker=='hold':
