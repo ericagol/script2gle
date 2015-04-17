@@ -153,14 +153,14 @@ with open(rname,'r') as sf_orig:
 				elif marker in ['fill','fillbetween']:
 					if marker == 'fillbetween':
 						fbargs = s2gf.get_fargs(l)
-		 				l      = 'fill([%s,foo],[%s,fliplr(%s)],%s)'%(tuple(fbargs[:3]),s2gf.strip_d(str(fbargs[3:]),r'^\[|\]$'))
+		 				l      = 'fill([%s,foo],[%s,fliplr(%s)],%s)'%(fbargs[0],fbargs[1],fbargs[2],s2gf.strip_d(str(fbargs[3:]),r'^\[|\]$'))
 		 				l      = sub('"','',l)
 		 			#
 					fill = s2gf.read_fill(l,figc,plotc)
 					# -> write to temp script file
 					sf_tmp.write(fill['script'])
 					# -> write to temp gle file
-					block    = 'data ".__datfill%i_%i.dat" d%i\n'%(figc,plotc,plotc)
+					block    = 'data ".__datfill%i_%i.dat" d%i d%i\n'%(figc,plotc,plotc,plotc+1)
 					block   += 'fill d%i,d%i color %s'%(plotc,plotc+1,fill['color'])
 					fig.plot+= block
 					fig.trsp = fig.trsp or fill['alpha']
