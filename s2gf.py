@@ -119,9 +119,10 @@ def get_color(optstack):
 		a = '1' if not alphasearch else alphasearch.group(1)
 		color = 'rgba(%s,%s,%s,%s)'%(r,g,b,a)
 	# option is x11 name + 'alpha'
-	elif optstack and strip_d(optstack[0].lower(),'\'')=='alpha': # col->rgba
+	elif optstack and optstack[0].lower().strip('\'')=='alpha':
 		optstack.pop(0)
 		opta  = getnextarg(optstack)
+		# col -> rgba (using svg2rgb dictionary see s2gd.srd)
 		r,g,b = s2gd.srd.setdefault(opt,(128,128,128))
 		a     = round(float(opta)*100)
 		color = 'rgba255(%i,%i,%i,%2.1f)'%(r,g,b,a)
