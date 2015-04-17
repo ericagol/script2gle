@@ -98,6 +98,3 @@ class GLE:
 			gle_out__.write( graph 	    +n*2+
 						 	 self.extra +n*2+
 							 key )
-# Complementary functions
-def gle(name):
- 		return GLE(fname=name)

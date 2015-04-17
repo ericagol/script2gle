@@ -2,6 +2,8 @@
 #
 csd = {} # current script dictionary, this is set by S2G
 		 # by default, set to matlab (see end of this file)
+sname = ''
+tind  = '.__' # temporary file indicator
 
 # DICTIONARIES
 #

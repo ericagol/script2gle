@@ -13,6 +13,7 @@ from time import time
 import glec
 import s2gf
 import s2gd
+import s2gc
 
 ###########################
 # USER ARGUMENTS ##########
@@ -49,16 +50,10 @@ fname2 	   = fname.split('/')
 fname2 	   = fname2[-1] 		# only name of file
 gname  	   = fname+'.gle'
 s_tmp      = '.__%s_script_tmp'%fname
+s2gd.sname = fname2
+figlist    = []
 #
-figc    = 0  # number of figures
-plotc   = 0  # number of plots for one figure
-figs    = []
-lstyles = [] # list of lstyles in curfig
-flags   = {'holdon':False}
-#
-newfig = lambda figc: glec.gle('.__%s_plot%i'%(fname2,figc))
-#
-# script dictionary for the different languages
+# def of the appropriate script dictionary
 if fext   == '.jl':
 	s2gd.csd = s2gd.script_dict_JL
 elif fext == '.r':
@@ -68,7 +63,7 @@ elif fext == '.m':
 	if no_octave:
 		s2gd.csd['caller'] = 'matlab -nodesktop -nosplash -noFigureWindows -r'
 #
-s2gd.ignored+=r'|^\s*%s'%s2gd.csd['comment']
+s2gd.ignored+= r'|^\s*%s'%s2gd.csd['comment']
 s2gd.markers = r'|'.join([s2gd.markers,s2gd.csd['append']])
 #
 # == MAIN BLOCK =================
@@ -79,6 +74,8 @@ with open(rname,'r') as sf_orig:
 		#
 		# script lines > stack of lines to process
 		script_stack = sf_orig.readlines()
+		# setup a fig
+		curfig 		 = s2gc.S2GFIG(1,no_tex)
 		#
 		while script_stack:
 			#
@@ -104,104 +101,99 @@ with open(rname,'r') as sf_orig:
 				if hon:  l=sub(r'hold(?!\s*off)(.*;?\s*)','',l)
 				hoff = bool(search(r'hold(\s+)off',l))
 				if hoff: l=sub(r'hold(\s+)off(\s*;?\s*)','',l)
-				flags['holdon'] = (hon or flags['holdon']) and (not hoff)
+				curfig.flags['holdon'] = (hon or curfig.flags['holdon']) and (not hoff)
 			# -----------
 			# FIGURE LINE
 			elif marker=='figure':
-				figc 		   += 1
-				if figc>1: figs.append(fig)
-				fig,lstyles 	= newfig(figc), []
-				fig.tex         = False if no_tex else True
-				plotc 			= 0
-				flags['holdon'] = False
-				# -> write to temp matlab file
-				sf_tmp.write('#'+l)
+				#
+				# store any prev. figure, start a new one
+				if curfig.plotcntr:
+					figlist.append(curfig)
+				curfig = s2gc.S2GFIG(curfig.fignum+1,no_tex)
+				#
 			# ---------
 			# PLOT LINE
 			elif match(r'(?:plot|semilog[xy]|stem|loglog|fill|fillbetween|hist|histogram|bar)$',marker):
-				# ------------------
-				# <- NEW GLE FIG? ->
-				pre_figc = figc
-				if not plotc:
-					plotc,figc = 1,figc+(not figc)
+				#
+				# if holding, add plot to current fig
+				if curfig.flags['holdon'] or not curfig.plotcntr:
+					curfig.plotcntr += 1
+				#
+				# otherwise create new fig
 				else:
-					plotc = 1+plotc*flags['holdon']
-					figc  = figc+1*(not flags['holdon'])
-				# check if should generate new fig & append previous if any
-				if figc>pre_figc:
-					if figc>1: figs.append(fig)
-					fig, lstyles = newfig(figc), []
-					fig.tex = False if no_tex else True
+					figlist.append(curfig)
+					curfig = s2gc.S2GFIG(curfig.fignum+1,no_tex)
 				# ------------------
 				# <- PLOT ACTIONS ->
 				if marker in ['plot','semilogx','semilogy','stem','loglog']:
 					# structify: extract code and options
-					plt = s2gf.read_plot(l,figc,plotc)
+					plt = s2gf.read_plot(l,curfig.fignum,curfig.plotcntr)
 					# -> write to temp script file
 					sf_tmp.write(plt['script'])
 					# -> write to temp gle file
-					block = 'data ".__datplot%i_%i.dat" d%i\n'%(figc,plotc,plotc)
-					block+= 'd%i'%plotc+									\
+					block = 'data ".__datplot%i_%i.dat" d%i\n'%(curfig.fignum,curfig.plotcntr,curfig.plotcntr)
+					block+= 'd%i'%curfig.plotcntr+									\
 								' impulses '*bool(match(r'stem',marker))+ 	\
 								plt['lstyle']+								\
 								plt['lwidth']+								\
 								plt['msize']+'\n'
-					fig.plot+=block
-					lstyles.append(plt['lstyle'])
-					if match(r'semilog[xy]?',marker): fig.axopt+=marker[-1]+'axis log\n'
-					elif match(r'loglog',marker): 	  fig.axopt+='xaxis log\nyaxis log\n'
+					curfig.plot += block
+					curfig.lstyles.append(plt['lstyle'])
+					if match(r'semilog[xy]?',marker): curfig.axopt+=marker[-1]+'axis log\n'
+					elif match(r'loglog',marker): 	  curfig.axopt+='xaxis log\nyaxis log\n'
+
 				elif marker in ['fill','fillbetween']:
 					if marker == 'fillbetween':
 						fbargs = s2gf.get_fargs(l)
 		 				l      = 'fill([%s,foo],[%s,fliplr(%s)],%s)'%(fbargs[0],fbargs[1],fbargs[2],s2gf.strip_d(str(fbargs[3:]),r'^\[|\]$'))
 		 				l      = sub('"','',l)
 		 			#
-					fill = s2gf.read_fill(l,figc,plotc)
+					fill = s2gf.read_fill(l,curfig.fignum,curfig.plotcntr)
 					# -> write to temp script file
 					sf_tmp.write(fill['script'])
 					# -> write to temp gle file
-					block    = 'data ".__datfill%i_%i.dat" d%i d%i\n'%(figc,plotc,plotc,plotc+1)
-					block   += 'fill d%i,d%i color %s'%(plotc,plotc+1,fill['color'])
-					fig.plot+= block
-					fig.trsp = fig.trsp or fill['alpha']
+					block    = 'data ".__datfill%i_%i.dat" d%i d%i\n'%(curfig.fignum,curfig.plotcntr,curfig.plotcntr,curfig.plotcntr+1)
+					block   += 'fill d%i,d%i color %s'%(curfig.plotcntr,curfig.plotcntr+1,fill['color'])
+					curfig.plot+=block
+					curfig.trsp = curfig.trsp or fill['alpha']
 				elif marker in ['hist','histogram']:
-					hist = s2gf.read_hist(l,figc,plotc)
+					hist = s2gf.read_hist(l,curfig.fignum,curfig.plotcntr)
 					# -> write to temp script file
 					sf_tmp.write(hist['script'])
 					# -> write to temp gle file
 					# --- xtra
-					block  = 'data ".__dathist%i_%i_side.dat" d%i\n'%(figc,plotc,plotc) # has to name: 1 col
-					block += 'xmin_  = datayvalue(d%i,1)\n'%plotc
-					block += 'xmax_  = datayvalue(d%i,2)\n'%plotc
-					block += 'nbins_ = datayvalue(d%i,3)\n'%plotc
+					block  = 'data ".__dathist%i_%i_side.dat" d%i\n'%(curfig.fignum,curfig.plotcntr,curfig.plotcntr) # has to name: 1 col
+					block += 'xmin_  = datayvalue(d%i,1)\n'%curfig.plotcntr
+					block += 'xmax_  = datayvalue(d%i,2)\n'%curfig.plotcntr
+					block += 'nbins_ = datayvalue(d%i,3)\n'%curfig.plotcntr
 					# --- 
-					block   += 'data ".__dathist%i_%i.dat" d%i\n'%(figc,plotc,plotc+1) # has to name: 1 col
-					plotc   += 1
-					block   += 'N_ = ndata(d%i)\n'%plotc
+					block   += 'data ".__dathist%i_%i.dat" d%i\n'%(curfig.fignum,curfig.plotcntr,curfig.plotcntr+1) # has to name: 1 col
+					curfig.plotcntr   += 1
+					block   += 'N_ = ndata(d%i)\n'%curfig.plotcntr
 					block   += 'width_ = (xmax_-xmin_)/%s\n'%('nbins_')
 					norm     = '1'
 					if   hist['norm']=='probability':  norm = '1.0/N_'
 					elif hist['norm']=='countdensity': norm = '1.0/width_'
 					elif hist['norm']=='pdf':          norm = '1.0/(N_*width_)'
-					block    += 'let d%i = hist d%i from xmin_ to xmax_ bins %s\n'%(plotc+1,plotc,'nbins_')
-					block    += 'let d%i = d%i*%s\n'%(plotc+1,plotc+1,norm)
-					block    += 'bar d%i color %s fill %s width %s\n'%(plotc+1,hist['edgecolor'],hist['facecolor'],'width_')
-					fig.plot += block
-					fig.trsp  = fig.trsp or hist['alpha']
-					plotc    += 1
+					block    += 'let d%i = hist d%i from xmin_ to xmax_ bins %s\n'%(curfig.plotcntr+1,curfig.plotcntr,'nbins_')
+					block    += 'let d%i = d%i*%s\n'%(curfig.plotcntr+1,curfig.plotcntr+1,norm)
+					block    += 'bar d%i color %s fill %s width %s\n'%(curfig.plotcntr+1,hist['edgecolor'],hist['facecolor'],'width_')
+					curfig.plot += block
+					curfig.trsp  = curfig.trsp or hist['alpha']
+					curfig.plotcntr    += 1
 				elif marker == 'bar':
-					bar = s2gf.read_bar(l,figc,plotc)
+					bar = s2gf.read_bar(l,curfig.fignum,curfig.plotcntr)
 					# -> write to temp script file
 					sf_tmp.write(bar['script'])
 					# -> write to temp gle file
 					# --- xtra
-					block  = 'data ".__datbar%i_%i_side.dat"\n'%(figc,plotc,plotc)
-					block += 'ncols_ = datayvalue(d%i,1)\n'%(plotc)
-					block += 'bstr_$ = "d%i"\n'%(plotc+1)
+					block  = 'data ".__datbar%i_%i_side.dat"\n'%(curfig.fignum,curfig.plotcntr,curfig.plotcntr)
+					block += 'ncols_ = datayvalue(d%i,1)\n'%(curfig.plotcntr)
+					block += 'bstr_$ = "d%i"\n'%(curfig.plotcntr+1)
 					block += 'for k=1 to ncols_-1, bstr_$=bstr_$+",d"+num$(k),next k\n'
 					# # ---
-					# block  = 'data ".__datbar%i_%i.dat" bstr_$ \n'%(figc,plotc)
-					# block += 'bar d%i color %s fill %s width %f\n'%(plotc+1,bar['edgecolor'],bar['facecolor'],bar['width'])
+					# block  = 'data ".__datbar%i_%i.dat" bstr_$ \n'%(curfig.fignum,curfig.plotcntr)
+					# block += 'bar d%i color %s fill %s width %f\n'%(curfig.plotcntr+1,bar['edgecolor'],bar['facecolor'],bar['width'])
 					#
 					xaxisopt  = ''
 					if not bar['flticks']:
@@ -211,9 +203,10 @@ with open(rname,'r') as sf_orig:
 					#
 					if xaxisopt:
 						block += 'xaxis '+xaxisopt+'\n'
-					fig.plot  += block
-					fig.trsp   = fig.trsp or bar['alpha']
-					plotc     += 1
+					#
+					curfig.plot  += block
+					curfig.trsp   = curfig.trsp or bar['alpha']
+					curfig.plotcntr     += 1
  			# -------------------------
  			# AXIS LINES (pass in temp)
  			# (atm, ignore fontsize)
@@ -221,20 +214,20 @@ with open(rname,'r') as sf_orig:
  				al = s2gf.getarg1(l)
  				marker = '' if (marker=='title') else marker[0]
  				if no_tex:
- 					fig.axopt+=marker+'title "%s"\n'%sub(r'\\','/',al)
+ 					curfig.axopt+=marker+'title "%s"\n'%sub(r'\\','/',al)
  				else:
- 					fig.axopt+=marker+'title "\\tex{%s}"\n'%sub('%','\%',al)
+ 					curfig.axopt+=marker+'title "\\tex{%s}"\n'%sub('%','\%',al)
 			elif match(r'(?:[xy]lim)$',marker):
  				al  = s2gf.getarg1(l)
  				al_ = s2gf.array_x(al)
- 				fig.axopt+=marker[0]+'axis min '+al_[0]+' max '+al_[1]+'\n'
+ 				curfig.axopt+='%saxis min %s max %s\n'%(marker[0],al_[0],al_[1])
  			elif marker=='axis':
  				if match(r'axis\(',l):
 	 				al  = s2gf.getarg1(l)
 	 				al_ = s2gf.array_x(al)
 	 				block = 'xaxis min '+al_[0]+' max '+al_[1]+'\n'
 	 				block+= 'yaxis min '+al_[2]+' max '+al_[3]+'\n'
-	 				fig.axopt+=block
+					curfig.axopt+=block
 	 			else:
 	 				# STUB STUB STUB STUB STUB
 	 				# eg: axis ij, axis tight, ...
@@ -256,33 +249,33 @@ with open(rname,'r') as sf_orig:
 							if nc==1: # format a:b
 								f,l = match(r'\[?\s*(.+)\s*:\s*(.+)\s*\]?',ticks).group(1,2),
 								num = int(floor(float(l)-float(f))+1)
-								fig.axopt+='%saxis ftick %s dticks 1 nticks %i\n'%(arg[0],f,num)
+								curfig.axopt+='%saxis ftick %s dticks 1 nticks %i\n'%(arg[0],f,num)
 							elif nc==2: # format a:b:c
 								f,d,l = match(r'\[?\s*(.+?)\s*:\s*(.+?)\s*:\s*(.+?)\s*\]?',ticks).group(1,2,3)
 								num   = int(floor((float(l)-float(f))/float(d)+1))
-								fig.axopt+='%saxis ftick %s dticks %s nticks %i\n'%(arg[0],f,d,num)
+								curfig.axopt+='%saxis ftick %s dticks %s nticks %i\n'%(arg[0],f,d,num)
 							else: # a or [a b c]
 								ticks = s2gf.strip_d(ticks,r'\[|\]')
 								ticks = sub(',',' ',ticks)
-								fig.axopt+='%splaces %s\n'%(arg[0],ticks)
+								curfig.axopt+='%splaces %s\n'%(arg[0],ticks)
 						elif match(r'[XY]TICKLABEL$',arg):
 							labels = s2gf.strip_d(args.pop(0),r'\[|\]')
 							labels = sub(r'\'','"',labels)
 							labels = sub(',',' ',labels)
 							if no_tex:
-								fig.axopt+='%snames %s\n'%(arg[0],sub(r'\\','/',labels))
+								curfig.axopt+='%snames %s\n'%(arg[0],sub(r'\\','/',labels))
 							else:
-			 					fig.axopt+='%snames %s\n'%(arg[0],sub('%','\%',labels))
+								curfig.axopt+='%snames %s\n'%(arg[0],sub('%','\%',labels))
 						elif match(r'[XY]SCALE$',arg):
 							scale = args.pop(0)
-							fig.axopt+='%saxis log\n'%arg[0]
+							curfig.axopt+='%saxis log\n'%arg[0]
 						elif match(r'[XY]LIM$',arg):
 							al  = args.pop(0)
 			 				al_ = s2gf.array_x(al)
-			 				fig.axopt+='%saxis min %s max %s\n'%(arg[0],al_[0],al_[1])
+			 				curfig.axopt+='%saxis min %s max %s\n'%(arg[0],al_[0],al_[1])
 			 			elif match(r'FONTSIZE',arg):
 			 				fs  = args.pop(0)
-			 				fig.figoptfs = 'set hei %f'%(float(fs)/28.35/2.) # psp to cm
+			 				curfig.figoptfs = 'set hei %f'%(float(fs)/28.35/2.) # psp to cm
 				# -------------
 				# <- set GCF ->
 				elif match(r'set\(gcf',l):
@@ -290,7 +283,7 @@ with open(rname,'r') as sf_orig:
 					pass
 	 		elif match(r'(#j2g:)',l):
 	 			s = match(r'(#j2g:)(.+)$',l).group(2)+'\n'
-	 			fig.axopt+=s
+				curfig.axopt+=s
 	 		# ------------
 	 		# LEGEND LINES
 			elif marker=='legend':
@@ -301,17 +294,17 @@ with open(rname,'r') as sf_orig:
 					legistru  = leg_i_str.upper()
 					if   legistru == 'LOCATION':
 						leg_loc    = s2gf.strip_d(leg_stack.pop(0),'\'')
-						fig.legpos = 'pos %s'%s2gd.leg_dict.setdefault(leg_loc,'tr')
+						curfig.legpos = 'pos %s'%s2gd.leg_dict.setdefault(leg_loc,'tr')
 					elif legistru == 'BOXOFF':
-						fig.legopt+= ' nobox'
+						curfig.legopt+= ' nobox'
 					elif legistru == 'OFFSET':
 						leg_off    = s2gf.array_x(leg_stack.pop(0))
-						fig.legoff = ' offset '+' '.join(leg_off)
+						curfig.legoff = ' offset '+' '.join(leg_off)
 					else:
 						if no_tex: leg_i_str = sub(r'\\','/',leg_i_str)
 						#
 						try:
-							fig.legend += 'text "%s" %s\n'%(leg_i_str,lstyles[leg_c])
+							curfig.legend += 'text "%s" %s\n'%(leg_i_str,curfig.lstyles[leg_c])
 							leg_c      += 1
 						except IndexError, e:
 							print '\nerror::S2G:: too many legends, did you forget a HOLD?\n'
@@ -319,13 +312,14 @@ with open(rname,'r') as sf_orig:
 	 		# RUN LINES (ext. scripts)
 			elif marker==s2gd.csd['append']:
 				scriptname = s2gf.strip_d(s2gf.getarg1(l),'\"')
-				print scriptname
 				print 'Appending script <', scriptname, '>...'
 				with open(scriptname,'r') as script:
 					# prepend the script to stack of lines
 					script_stack = script.readlines()+script_stack
 		# if figure remains -> append it
-		if figc>len(figs): figs.append(fig)
+		if curfig.plotcntr:
+			figlist.append(curfig)
+		#
 		sf_tmp.write('\n%s\n'%s2gd.csd['exit'])
 
 # = # = # = # = # = # = # = # = # = # = # = # = # = # = # = # = #
@@ -348,15 +342,16 @@ except Exception, e:
 if not no_gleplot:
 	start = time()
 	if png_out:
-		for f in figs:
+		for f in figlist:
 			f.compile(png_resol)
 	else:
-		for f in figs:
-			f.compile() # pdf output
+		for f in figlist:
+			f.compile()
 	delta = time()-start
 	print 'Calling+executing GLE :: ',delta
 else: # just copy gle files
-	for f in figs: f.writefile()
+	for f in figlist:
+		f.writefile()
 
 # CLEANUP
 files = listdir('.')
