@@ -1,10 +1,11 @@
 
 from s2gf import *
 
-check_lambdas  = False
-check_getfargs = False
-check_arrayx   = False
-check_getcolor = True
+check_lambdas  		= False
+check_getfargs 		= False
+check_arrayx   		= False
+check_getcolor 		= False
+check_closeellipsis = True
 
 # LAMBDA FUNCTIONS
 if check_lambdas:
@@ -61,3 +62,13 @@ if check_getcolor:
 	s = ['m']
 	a,b,c = get_color(s)
 	print 'PASS' if a=='darkmagenta' else 'FAIL'
+
+# -- CLOSE ELLIPSIS
+if check_closeellipsis:
+	print '\n -- CLOSE ELLIPSIS --'
+	stack = ["plot(x,y,...\n",
+		 	 "'color','IndianRed' ,...",
+			 "'linewidth', 2.0)"]
+	a,b = close_ellipsis(stack.pop(0),stack)
+	test = (a == "plot(x,y,'color','IndianRed' ,'linewidth', 2.0)") and not b
+	print 'PASS' if test else 'FAIL'

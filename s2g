@@ -153,7 +153,7 @@ with open(rname,'r') as sf_orig:
 				elif marker in ['fill','fillbetween']:
 					if marker == 'fillbetween':
 						fbargs = s2gf.get_fargs(l)
-		 				l      = 'fill([%s,foo],[%s,fliplr(%s)],%s)'%(fbargs[0],fbargs[1],fbargs[2],s2gf.strip_d(str(fbargs[3:]),r'^\[|\]$'))
+		 				l      = 'fill([%s,foo],[%s,fliplr(%s)],%s)'%(tuple(fbargs[:3]),s2gf.strip_d(str(fbargs[3:]),r'^\[|\]$'))
 		 				l      = sub('"','',l)
 		 			#
 					fill = s2gf.read_fill(l,figc,plotc)
