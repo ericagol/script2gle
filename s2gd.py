@@ -130,7 +130,7 @@ mcol_dict = {
 	'g'	: 'darkgreen',
 	'b' : 'darkblue',
 	'c' : 'darkcyan',
-	'm' : 'darmagenta',
+	'm' : 'darkmagenta',
 	'y' : 'goldenrod',
 	'k' : 'black',
 	'w' : 'white',

@@ -44,12 +44,11 @@ if len(argv)>2:
 #
 rname  	   = argv[1]
 fname,fext = splitext(rname)    # full name with directory + file extension
+fext 	   = fext.lower() 		
 fname2 	   = fname.split('/')
 fname2 	   = fname2[-1] 		# only name of file
 gname  	   = fname+'.gle'
-#
-s_tmp = '.__%s_script_tmp'%fname
-# create folder
+s_tmp      = '.__%s_script_tmp'%fname
 #
 figc    = 0  # number of figures
 plotc   = 0  # number of plots for one figure
@@ -59,20 +58,18 @@ flags   = {'holdon':False}
 #
 newfig = lambda figc: glec.gle('.__%s_plot%i'%(fname2,figc))
 #
-#
 # script dictionary for the different languages
-if fext=='.jl':
+if fext   == '.jl':
 	s2gd.csd = s2gd.script_dict_JL
-elif fext in ['.R','.r']:
+elif fext == '.r':
 	s2gd.csd = s2gd.script_dict_R
-elif fext=='.m':
+elif fext == '.m':
 	s2gd.csd = s2gd.script_dict_M	
-
+	if no_octave:
+		s2gd.csd['caller'] = 'matlab -nodesktop -nosplash -noFigureWindows -r'
+#
 s2gd.ignored+=r'|^\s*%s'%s2gd.csd['comment']
 s2gd.markers = r'|'.join([s2gd.markers,s2gd.csd['append']])
-
-if no_octave:
-	s2gd.csd['caller'] = 'matlab -nodesktop -nosplash -noFigureWindows -r'
 #
 # == MAIN BLOCK =================
 # create temp matlab file which
@@ -82,26 +79,10 @@ with open(rname,'r') as sf_orig:
 		# script lines > stack of lines to process
 		script_stack = sf_orig.readlines()
 		while script_stack:
-			l = script_stack.pop(0)
-			# line continuation (...)
-			srch_cl = search(r'(.*?)\.\.\.',l)
-			if srch_cl:
-				line_open = True
-				nloops = 0
-				l = srch_cl.group(1)
-				while line_open and nloops<100:
-					nloops+=1
-					lt = script_stack.pop(0)
-					srch_cl = search(r'(.*?)\.\.\.',lt)
-					if srch_cl:
-						l+=srch_cl.group(1)
-					else:
-						line_open = False
-						l+=lt
-				if line_open:
-					print 'error::S2G::ellipsis was found but not closed, check!\n'
-			# lines to ignore (and write as blank) if they appear
-			if  s2gf.match_start(s2gd.ignored,l): continue
+			# sanitize by gathering multiline expressions (EOL with '...')
+			l,script_stack = s2gf.close_ellipsis(script_stack.pop(0),script_stack)
+			# ignore lines like "home", "clear", comments,...
+			if s2gf.match_start(s2gd.ignored,l): continue
 			#
 			marker = s2gf.match_start(s2gd.markers, l)
 			if not marker:

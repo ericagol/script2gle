@@ -3,6 +3,7 @@
 #
 from re import search, sub, match
 from os.path import join
+from s2ge import *
 import s2gd
 #
 ###########################
@@ -10,18 +11,11 @@ import s2gd
 ###########################
 # match a certain expression at start of string
 match_start  = lambda expr,line: match(r'\s*(%s)[^a-zA-Z0-9]'%expr,line)
+# ----------
+# RECONSIDER
+# ----------
 # strip unwanted delimiters from string
 strip_d      = lambda s,d: sub(d,'',s)
-# check if string is closed
-s_cld 		 = lambda s: not match(r'[\(\[\{]*\'',s) or match(r'[\(\[\{]*\'(.*)\'',s)
-# remove strings, then count delimiters
-cnt_d 		 = lambda s,d: sub(r'\'.*\'','',s).count(d)
-# add $ to each expression in a list (to match exactly that)
-shut_l       = lambda l: [e+r'$' for e in l]
-# check is string is in list
-rem_esp 	 = lambda l: [sub(' ','',e) for e in l]
-# check if pattern is open
-# check_open   = lambda s,d1,d2: s_cld(s) if d1=='\'' else not bool(cnt_d(s,d1)-cnt_d(s,d2))
 # get first argument (cf getfargs)
 getarg1      = lambda l: strip_d(get_fargs(l)[0],'\'')
 # get next arg
@@ -41,14 +35,16 @@ getnextargNL = lambda lst: strip_d(lst.pop(0),'\'')
 def get_fargs(line):
 	# get core
  	stack = search(
- 				r'^\s*(?:\w+)\(\s*'	# match "plot("
- 				r'(.*?)'			# all arguments
- 				r'(?:\)\s*;?\s*)'	# end bracket and rest of line (possible comm)
-				r'((?:%s).*)?$'%s2gd.csd['comment'],
+ 				r'^\s*(?:\w+)\(\s*'					 # match "marker("
+ 				r'(.*?)'							 # all arguments
+ 				r'(?:\)\s*;?\s*)'					 # end bracket
+				r'((?:%s).*)?$'%s2gd.csd['comment'], # and rest of line (possible comm)
 				line).group(1)
+ 	#
  	# browse the chars in arglst, separate with commas
  	# but not when within expression such as 
  	# '..,..' or "..,.." or [..,..] etc.
+ 	#
  	arglst = []
 	while stack:
 		stack  = stack.strip()
@@ -56,7 +52,7 @@ def get_fargs(line):
 		maxidx = len(stack)
 		curarg = ''
 		key    = stack[0]
-		isopen = key in s2gd.keyopen
+		isopen = key in s2gd.keyopen 		# ', ", [, (, {
 		while curidx<maxidx-1 and isopen:
 			curchar = stack[curidx]
 			curarg += curchar
@@ -71,27 +67,6 @@ def get_fargs(line):
 		curarg = ''
 	#
  	return arglst
-
-# # +++++++++++++++++++++++++++++++++++++++++
-# # CLOSE SPLIT:
-# # 	close broken patterns after .split(',')
-# #
-# #	<in>:	delimiters and list coming from
-# #			a split along the commas
-# # 	<out>: 	list of strings reconstructed
-# #			along broken patterns
-# def close_split(d1,d2,lst):
-# 	lst2,tmp  = [],''
-# 	for s in lst:
-# 		tmp += s+','
-# 		if check_open(tmp,d1,d2):
-# 			lst2.append(tmp[:-1])
-# 			tmp = ''
-# 	if not lst2:
-# 		lst2 = lst
-# 	elif tmp[:-1]:
-# 		lst2.append(tmp[:-1])
-# 	return lst2
 #
 # +++++++++++++++++++++++++++++++++++++++++++
 # ARRAY X
@@ -125,11 +100,8 @@ def array_x(s):
 			seq.append(str(cur))
 		array = seq
 	else:
-		spl = left.split(' ')
-		for i in range(0,spl.count('')):
-			spl.remove('')
-		array = spl
-	return rem_esp(array)
+		array = left.split(' ')
+	return [sub(' ','',e) for e in array]
 #
 # +++++++++++++++++++++++++++++++++++++++++++
 # GET COLOR:
@@ -151,14 +123,35 @@ def get_color(optstack):
 		optstack.pop(0)
 		opta  = getnextarg(optstack)
 		r,g,b = s2gd.srd.setdefault(opt,(128,128,128))
-		a     = float(opta)*100
-		color = 'rgba255(%i,%i,%i,%f)'%(r,g,b,a)
+		a     = round(float(opta)*100)
+		color = 'rgba255(%i,%i,%i,%2.1f)'%(r,g,b,a)
 	else: # just colname
 		color = opt
 		# if in matlab format (otherwise x11 name)
 		if color in ['r','g','b','c','m','y','k','w']:
-			color = s2gd.md['facecolor']
+			color = s2gd.md[color]
 	return color, a, optstack
+#
+# +++++++++++++++++++++++++++++++++++++++++++
+def close_ellipsis(l,script_stack):
+	# gather lines in case continuation (...)
+	srch_cl = search(r'(.*?)\.\.\.',l)
+	if srch_cl:
+		line_open = True
+		nloops = 0
+		l = srch_cl.group(1)
+		while line_open and nloops<100:
+			nloops += 1
+			lt      = script_stack.pop(0)
+			srch_cl = search(r'(.*?)\.\.\.',lt)
+			if srch_cl:
+				l  += srch_cl.group(1)
+			else:
+				line_open = False
+				l+=lt
+		if line_open:
+			raise S2GSyntaxError(l)
+	return l, script_stack
 #
 # +++++++++++++++++++++++++++++++++++++++++++
 # READ PLOT:

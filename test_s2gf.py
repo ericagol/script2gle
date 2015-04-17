@@ -1,25 +1,63 @@
 
 from s2gf import *
 
-check_getfargs = True
-
+check_lambdas  = False
+check_getfargs = False
+check_arrayx   = False
+check_getcolor = True
 
 # LAMBDA FUNCTIONS
-
-# NORMAL FUNCTIONS
+if check_lambdas:
+	print '\n -- L::MATCH START -- '
+	s = "  plota(..."
+	print 'PASS' if match_start('plota',s) and not match_start('plot',s) else 'FAIL'
+	s = "   T0(..."
+	print 'PASS' if match_start('T0',s) and not match_start('T',s) else 'FAIL'
 
 # -- GET FARGS (basic parsing)
 if check_getfargs:
-	s  = "plot(x,y,'linewidth',1.5,'color', [0.1,0.1,0.9])"
-	print s
-	print '::> ', 'PASS' if (get_fargs(s) == ['x', 'y', "'linewidth'", '1.5', "'color'", '[0.1,0.1,0.9]']) else get_fargs(s)
+	print '\n -- GETFARGS CHECK --'
+	s = "plot(x,y,'linewidth',1.5,'color', [0.1,0.1,0.9])"
+	test = (get_fargs(s) == ['x', 'y', "'linewidth'", '1.5', "'color'", '[0.1,0.1,0.9]'])
+	print 'PASS' if test else s+'\n>>>>'+get_fargs(s)
 	s = "plot(x,y','linewidth',1.5)"
-	print s
-	print '::> ', 'PASS' if (get_fargs(s) == ['x', "y'", "'linewidth'",'1.5']) else get_fargs(s)
+	test = (get_fargs(s) == ['x', "y'", "'linewidth'",'1.5'])
+	print 'PASS' if test else s+'\n>>>>'+get_fargs(s)
 	s = "marker('a string, ( ]', 'another!', y'*a')"
-	print s
-	print '::> ', 'PASS' if (get_fargs(s) == ["'a string, ( ]'", "'another!'", "y'*a'"]) else get_fargs(s)
+	test = (get_fargs(s) == ["'a string, ( ]'", "'another!'", "y'*a'"])
+	print 'PASS' if test else s+'\n'+'>>>>'+get_fargs(s)
 	s = "marker( [y',x',z], ' blah  ')"
-	print s
-	print '::> ', 'PASS' if (get_fargs(s) == ["[y',x',z]","' blah  '"]) else get_fargs(s)
+	(get_fargs(s) == ["[y',x',z]","' blah  '"])
+	print 'PASS' if test else s+'\n>>>>'+get_fargs(s)
 
+# -- ARRAY X (extract array) [SHOULD BE OBSOLETED, the array should be INTERPRETED by the script]
+if check_arrayx:
+	print '\n -- ARRAY X --'
+	s = '[2.0 -2.3]'
+	test = (array_x(s) == ['2.0','-2.3'])
+	print 'PASS' if test else 'FAIL'
+	s = '1:5'
+	test = (array_x(s) == ['1.0','2.0','3.0','4.0','5.0'])
+	print 'PASS' if test else 'FAIL'
+	s = '[1:5]'
+	test = (array_x(s) == ['1.0','2.0','3.0','4.0','5.0'])
+	print 'PASS' if test else 'FAIL'
+	s = '1:.5:3'
+	test = (array_x(s) == ['1.0','1.5','2.0','2.5','3.0'])
+	print 'PASS' if test else 'FAIL'
+
+# -- GET COLOR 
+if check_getcolor:
+	print '\n -- GET COLOR --'
+	s = ['[0.1,0.3, 0.4]']
+	a,b,c = get_color(s)
+	print 'PASS' if a=='rgba(0.1,0.3,0.4,1)' else 'FAIL'
+	s = ['salmon','alpha','0.8']
+	a,b,c = get_color(s)
+	print 'PASS' if a=='rgba255(250,128,114,80.0)' else 'FAIL'
+	s = ['salmon']
+	a,b,c = get_color(s)
+	print 'PASS' if a=='salmon' else 'FAIL'
+	s = ['m']
+	a,b,c = get_color(s)
+	print 'PASS' if a=='darkmagenta' else 'FAIL'
