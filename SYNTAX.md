@@ -2,6 +2,22 @@
 
 ## General remarks
 
+### Do's and Don't
+* Don't write multiple expressions on the same line, (some of it might work but don't assume it will) so this:
+```Matlab
+plot(x1,y1); hold on; plot(x2,y2);
+```
+should be written in three lines
+
+* Do write things on multiple lines with `...` continuation if needed:
+```Matlab
+plot(x1,y1, ...
+		'color','IndianRed',...
+		'linewidth',2.0)
+```
+
+
+
 ### Expression within s2g lines
 Expressions to be evaluated within S2G lines will be evaluated with the context-script and hence have to be valid within that script. For example in R this would be valid:
 ```R

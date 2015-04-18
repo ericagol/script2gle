@@ -14,6 +14,7 @@ import glec
 import s2gf
 import s2gd
 import s2gc
+import s2gap
 
 ###########################
 # USER ARGUMENTS ##########
@@ -66,6 +67,31 @@ elif fext == '.m':
 s2gd.ignored+= r'|^\s*%s'%s2gd.csd['comment']
 s2gd.markers = r'|'.join([s2gd.markers,s2gd.csd['append']])
 #
+# TEMP TEMP TEMP
+markers_dict = {
+	'figure' 		: s2gap.parse_figure,
+#	'plot'	 		: s2gap.parse_plot,
+	'fill'	 		: s2gap.parse_fill,
+	'fillbetween'	: s2gap.parse_fillbetween,	# extra syntax
+#	'hist'			: s2gap.parse_hist,
+#	'histogram'		: s2gap.parse_hist,
+#	'bar'			: s2gap.parse_bar,
+	'hold'			: s2gap.parse_hold,
+#	r'[xy]lim'		: s2gap.parse_xylim,
+#	r'[xy]label'	: s2gap.parse_xylabel,
+#	'title'			: s2gap.parse_title,
+#	r'[xy]?axis'	: s2gap.parse_xyaxis,
+#	'set'			: s2gap.parse_set,
+#	'legend'		: s2gap.parse_legend,
+#	r'semilog[xy]'	: s2gap.parse_semilog,
+#	'loglog'		: s2gap.parse_loglog,
+#	'stem'			: s2gap.parse_stem,
+#	r'(#s2g:)'		: s2gap.parse_s2g,
+	}
+def donothing(cf,l,**xa):
+	return 0,l
+# TEMP TEMP TEMP
+#
 # == MAIN BLOCK =================
 # create temp matlab file which
 # outputs data file for each plot
@@ -79,14 +105,14 @@ with open(rname,'r') as sf_orig:
 		#
 		while script_stack:
 			#
-			# sanitize by gathering multiline expressions (EOL with '...')
+			# sanitize by gathering multiline expressions (continuation line with '...')
 			l,script_stack = s2gf.close_ellipsis(script_stack.pop(0),script_stack)
 			#
-			# ignore lines starting with ('home','clear', comment symbol,...)
+			# ignore lines starting with (comment symbol, 'home','clear', ...)
 			if s2gf.match_start(s2gd.ignored,l): 
 				continue
 			#
-			# get marker if any ('plot','figure',...)
+			# get marker if any ('figure','plot',...)
 			marker = s2gf.match_start(s2gd.markers, l)
 			if not marker:
 				sf_tmp.write(l)
@@ -94,26 +120,14 @@ with open(rname,'r') as sf_orig:
 			else:
 				marker = marker.group(1)
 			#
-			# ---------------------
-			# HOLD ON/OFF somewhere
-			if marker=='hold':
-				hon  = bool(search(r'hold(?!\s*off)',l))
-				if hon:  l=sub(r'hold(?!\s*off)(.*;?\s*)','',l)
-				hoff = bool(search(r'hold(\s+)off',l))
-				if hoff: l=sub(r'hold(\s+)off(\s*;?\s*)','',l)
-				curfig.flags['holdon'] = (hon or curfig.flags['holdon']) and (not hoff)
-			# -----------
-			# FIGURE LINE
-			elif marker=='figure':
-				#
-				# store any prev. figure, start a new one
-				if curfig.plotcntr:
-					figlist.append(curfig)
-				curfig = s2gc.S2GFIG(curfig.fignum+1,no_tex)
-				#
+			# PARSE LINE AFTER MARKER (call appropriate s2gap function)
+			cf,l = markers_dict.setdefault(marker,donothing)(curfig,l,figlist=figlist,no_tex=no_tex,script=sf_tmp)
+			if cf:
+				curfig = cf
+
 			# ---------
 			# PLOT LINE
-			elif match(r'(?:plot|semilog[xy]|stem|loglog|fill|fillbetween|hist|histogram|bar)$',marker):
+			if match(r'(?:plot|semilog[xy]|stem|loglog|fill|fillbetween|hist|histogram|bar)$',marker):
 				#
 				# if holding, add plot to current fig
 				if curfig.flags['holdon'] or not curfig.plotcntr:
@@ -142,20 +156,21 @@ with open(rname,'r') as sf_orig:
 					if match(r'semilog[xy]?',marker): curfig.axopt+=marker[-1]+'axis log\n'
 					elif match(r'loglog',marker): 	  curfig.axopt+='xaxis log\nyaxis log\n'
 
-				elif marker in ['fill','fillbetween']:
-					if marker == 'fillbetween':
-						fbargs = s2gf.get_fargs(l)
-		 				l      = 'fill([%s,foo],[%s,fliplr(%s)],%s)'%(fbargs[0],fbargs[1],fbargs[2],s2gf.strip_d(str(fbargs[3:]),r'^\[|\]$'))
-		 				l      = sub('"','',l)
-		 			#
-					fill = s2gf.read_fill(l,curfig.fignum,curfig.plotcntr)
-					# -> write to temp script file
-					sf_tmp.write(fill['script'])
-					# -> write to temp gle file
-					block    = 'data "%sdatfill%i_%i.dat" d%i d%i\n'%(s2gd.tind,curfig.fignum,curfig.plotcntr,curfig.plotcntr,curfig.plotcntr+1)
-					block   += 'fill d%i,d%i color %s'%(curfig.plotcntr,curfig.plotcntr+1,fill['color'])
-					curfig.plot+=block
-					curfig.trsp = curfig.trsp or fill['alpha']
+				# elif marker in ['fill','fillbetween']:
+				# 	if marker == 'fillbetween':
+				# 		fbargs = s2gf.get_fargs(l)
+		 	# 			l      = 'fill([%s,foo],[%s,fliplr(%s)],%s)'%(fbargs[0],fbargs[1],fbargs[2],s2gf.strip_d(str(fbargs[3:]),r'^\[|\]$'))
+		 	# 			l      = sub('"','',l)
+		 	# 		#
+				# 	fill = s2gf.read_fill(l,curfig.fignum,curfig.plotcntr)
+				# 	# -> write to temp script file
+				# 	sf_tmp.write(fill['script'])
+				# 	# -> write to temp gle file
+				# 	block    = 'data "%sdatfill%i_%i.dat" d%i d%i\n'%(s2gd.tind,curfig.fignum,curfig.plotcntr,curfig.plotcntr,curfig.plotcntr+1)
+				# 	block   += 'fill d%i,d%i color %s'%(curfig.plotcntr,curfig.plotcntr+1,fill['color'])
+				# 	curfig.plot+=block
+				# 	curfig.trsp = curfig.trsp or fill['alpha']
+
 				elif marker in ['hist','histogram']:
 					hist = s2gf.read_hist(l,curfig.fignum,curfig.plotcntr)
 					# -> write to temp script file
@@ -281,9 +296,9 @@ with open(rname,'r') as sf_orig:
 				elif match(r'set\(gcf',l):
 					# STUB STUB STUB STUB STUB
 					pass
-	 		elif match(r'(#j2g:)',l):
-	 			s = match(r'(#j2g:)(.+)$',l).group(2)+'\n'
-				curfig.axopt+=s
+#	 		elif match(r'(#s2g:)',l):
+#	 			s = match(r'(#s2g:)(.+)$',l).group(2)+'\n'
+#				curfig.axopt+=s
 	 		# ------------
 	 		# LEGEND LINES
 			elif marker=='legend':

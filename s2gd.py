@@ -1,7 +1,7 @@
 # SHARED VARIABLES
 #
-csd = {} # current script dictionary, this is set by S2G
-		 # by default, set to matlab (see end of this file)
+csd   = {} 	# current script dictionary, this is set by S2G
+		 	# by default, set to matlab (see end of this file)
 sname = ''
 tind  = '.__' # temporary file indicator
 
@@ -89,7 +89,9 @@ script_dict_M = {
 	'autobins'	: '({0}<10)*{0}+(10<={0} && {0}<30)*10+(30<={0})*round(sqrt({0}))',
 	'EOL'		: ';',
 	'cbind'		: '[%s %s]',
+	'cbind2' 	: lambda s: '[%s]'%(','.join(s)),
 	'rbind'		: '[%s;%s]',
+	'rbind2'	: lambda s: '[%s]'%(';'.join(s)),
 	'span'		: '1:%s',
 	'exit'		: 'exit()',
 	'comment' 	: '\%',
