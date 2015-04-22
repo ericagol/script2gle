@@ -26,7 +26,7 @@ ylabel('$y=\mathcal N(x;1,5)$')
 ```
 
 running with `S2G` (\*) will generate the figure below:
-![introtest.R](/examples/R/introtest_plot1_g.png)
+![introtest.R](/examples/R/introtest_fig1_g.png)
 (\*:  `s2g introtest.R -png -tex`))
 
 ### The workflow
