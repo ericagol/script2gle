@@ -10,6 +10,7 @@ class S2GFIG(glec.GLE):
 		#
 		# specific S2GFIG
 		self.fignum   = fignum
-		self.plotcntr = 0
+		self.cntr     = 0 # to increment over datasets
+		self.nplots   = 0 # to increment over actual objects
 		self.flags    = {'holdon':False}
 		self.lstyles  = [] # for legend

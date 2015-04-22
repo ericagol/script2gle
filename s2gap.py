@@ -10,8 +10,8 @@ from s2ge import *
 
 addscrvar   = lambda name,expr: '%s=%s%s\n'%(name,expr,s2gd.csd['EOL'])
 addscrwrite = lambda vn,dfn:    '%s%s\n'%(s2gd.csd['writevar'].format(dfn,vn),s2gd.csd['EOL']) 
-checkfig  	= lambda cf: 		 cf.fignum+1*(cf.plotcntr>0)
-checkplot   = lambda cf: 		 1 if (cf.flags['holdon'] or not cf.plotcntr) else 0
+checkfig  	= lambda cf: 		 cf.fignum+1*(cf.cntr>0)
+checkplot   = lambda cf: 		 1 if (cf.flags['holdon'] or not cf.cntr) else 0
 
 #
 # PARSE FUNCTIONS
@@ -31,7 +31,7 @@ def parse_figure(curfig,line,**xargs):
 	# 
 	regex = r'\s*figure\s*?;?'
 	#
-	if curfig.plotcntr:
+	if curfig.cntr:
 		xargs['figlist'].append(curfig)
 	#
 	# return a new S2G figure + rest of line
@@ -65,7 +65,7 @@ def parse_fill(curfig,line,**xargs):
 # -----------------------------------------------------------------------------
 def parse_fillbetween(curfig,line,**xargs):
 	# increment plot counter if figure held or if was 0
-	curfig.plotcntr += checkplot(curfig)
+	curfig.cntr += checkplot(curfig)
 	#
 	# syntax: fillbetween(x,y1,y2,...)
 	args 	= s2gf.get_fargs(line)
@@ -91,7 +91,7 @@ def parse_fillbetween(curfig,line,**xargs):
 			raise S2GSyntaxError(line,'<::unknown option in fill::>')
 	#
 	# name of data file
-	dfn 	= '%sdatfill%i_%i.dat'%(s2gd.tind,curfig.fignum,curfig.plotcntr)
+	dfn 	= '%sdatfill%i_%i.dat'%(s2gd.tind,curfig.fignum,curfig.cntr)
 	#
 	# <ADD TO SCRIPT FILE>
 	script  = ''
@@ -108,8 +108,8 @@ def parse_fillbetween(curfig,line,**xargs):
 	xargs['script'].write(script)
 	#
 	# <ADD TO GLE FILE>
-	curfig.plot += 'data "%s" d%i d%i\n'%(dfn,curfig.plotcntr,curfig.plotcntr+1)
-	curfig.plot += 'fill d%i,d%i'%(curfig.plotcntr,curfig.plotcntr+1)
+	curfig.plot += 'data "%s" d%i d%i\n'%(dfn,curfig.cntr,curfig.cntr+1)
+	curfig.plot += 'fill d%i,d%i'%(curfig.cntr,curfig.cntr+1)
 	# > write style options
 	curfig.plot += ''.join([' %s %s'%v for v in opt_style.items()])+'\n'
 	# > flags
@@ -120,7 +120,7 @@ def parse_fillbetween(curfig,line,**xargs):
 # -----------------------------------------------------------------------------
 def parse_histogram(curfig,line,**xargs):
 	# increment plot counter if figure held or if was 0
-	curfig.plotcntr += checkplot(curfig)
+	curfig.cntr += checkplot(curfig)
 	#
 	# syntax: hist(x,...)
 	args    = s2gf.get_fargs(line)
@@ -138,6 +138,7 @@ def parse_histogram(curfig,line,**xargs):
 		'from'	: '',
 		'to'	: '',
 	}
+	nbins = 0
 	while optsraw:
 		opt = s2gf.getnextarg(optsraw)
 		# color / style
@@ -158,19 +159,22 @@ def parse_histogram(curfig,line,**xargs):
 				print '\nwarning::S2G::HIST::cumcount/cdf not handled, going default (count)\n'
  			else:
 				print '\nwarning::S2G::HIST::unknown normalization, going default (count)\n'
-		elif opt in ['from']:
+		elif opt == 'from':
 			xmin = s2gf.getnextargNL(optsraw)
-		elif opt in ['to']:
+		elif opt == 'to':
 			xmax = s2gf.getnextargNL(optsraw)
+		elif opt.isdigit():
+			nbins = opt
+		elif opt == 'nbins':
+			nbins = s2gf.getnextargNL(nbins)
 		else:
 			raise S2GSyntaxError(line,'<::unknown option in hist::>')			
 	#
 	# name of data files
-	dfn     = '%sdathist%i_%i.dat'%(s2gd.tind,curfig.fignum,curfig.plotcntr)
+	dfn     = '%sdathist%i_%i.dat'%(s2gd.tind,curfig.fignum,curfig.cntr)
 	dfn_sup = sub('hist','hist_sup',dfn)
 	#
 	# <ADD TO SCRIPT FILE>
-	nbins = 0
 	script  = ''
 	script += addscrvar('x__',x)
 	# > col vector
@@ -193,25 +197,25 @@ def parse_histogram(curfig,line,**xargs):
 	#
 	# <ADD TO GLE FILE>
 	# -- reading support file
-	curfig.plot += 'data "%s" d%i\n'%(dfn_sup,curfig.plotcntr)
-	curfig.plot += 'xmin_  = datayvalue(d%i,1)\n'%curfig.plotcntr
-	curfig.plot += 'xmax_  = datayvalue(d%i,2)\n'%curfig.plotcntr
-	curfig.plot += 'nbins_ = datayvalue(d%i,3)\n'%curfig.plotcntr
+	curfig.plot += 'data "%s" d%i\n'%(dfn_sup,curfig.cntr)
+	curfig.plot += 'xmin_  = datayvalue(d%i,1)\n'%curfig.cntr
+	curfig.plot += 'xmax_  = datayvalue(d%i,2)\n'%curfig.cntr
+	curfig.plot += 'nbins_ = datayvalue(d%i,3)\n'%curfig.cntr
 	# -- reading actual data
-	curfig.plotcntr += 1
-	curfig.plot += 'data "%s" d%i\n'%(dfn,curfig.plotcntr)
+	curfig.cntr += 1
+	curfig.plot += 'data "%s" d%i\n'%(dfn,curfig.cntr)
 	# -- -- computing normalization & co
-	curfig.plot += 'N_ = ndata(d%i)\n'%curfig.plotcntr
+	curfig.plot += 'N_ = ndata(d%i)\n'%curfig.cntr
 	curfig.plot += 'width_ = (xmax_-xmin_)/nbins_\n'
 	norm = '1.0'
 	if 	 opt_comp['norm'] == 'probability':  norm = '1.0/N_'
 	elif opt_comp['norm'] == 'countdensity': norm = '1.0/width_'
 	elif opt_comp['norm'] == 'pdf': 		 norm = '1.0/(N_*width_)'
 	# -- doing the hist
-	curfig.plot += 'let d{0} = hist d{1} from xmin_ to xmax_ bins nbins_\n'.format(curfig.plotcntr+1,curfig.plotcntr)
-	curfig.plotcntr += 1
-	curfig.plot += 'let d{0} = d{0}*{1}\n'.format(curfig.plotcntr,norm)
-	curfig.plot += 'bar d%i width width_'%curfig.plotcntr
+	curfig.plot += 'let d{0} = hist d{1} from xmin_ to xmax_ bins nbins_\n'.format(curfig.cntr+1,curfig.cntr)
+	curfig.cntr += 1
+	curfig.plot += 'let d{0} = d{0}*{1}\n'.format(curfig.cntr,norm)
+	curfig.plot += 'bar d%i width width_'%curfig.cntr
 	# > write style options
 	curfig.plot += ''.join([' %s %s'%v for v in opt_style.items()])+'\n'
 	# > flags

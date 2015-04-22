@@ -124,29 +124,32 @@ with open(rname,'r') as sf_orig:
 			cf,l = markers_dict.setdefault(marker,donothing)(curfig,l,figlist=figlist,no_tex=no_tex,script=sf_tmp)
 			if cf:
 				curfig = cf
-
 			# ---------
 			# PLOT LINE
 			if match(r'(?:plot|semilog[xy]|stem|loglog|fill|fillbetween|hist|histogram|bar)$',marker):
 				#
 				# if holding, add plot to current fig
-				if curfig.flags['holdon'] or not curfig.plotcntr:
-					curfig.plotcntr += 1
+				if curfig.flags['holdon'] or not curfig.nplots:
+					curfig.cntr	  += 1
+					curfig.nplots += 1
 				#
 				# otherwise create new fig
 				else:
+					print marker
+					print curfig.plot
+					print 'I WAS ERE'
 					figlist.append(curfig)
 					curfig = s2gc.S2GFIG(curfig.fignum+1,no_tex)
 				# ------------------
 				# <- PLOT ACTIONS ->
 				if marker in ['plot','semilogx','semilogy','stem','loglog']:
 					# structify: extract code and options
-					plt = s2gf.read_plot(l,curfig.fignum,curfig.plotcntr)
+					plt = s2gf.read_plot(l,curfig.fignum,curfig.cntr)
 					# -> write to temp script file
 					sf_tmp.write(plt['script'])
 					# -> write to temp gle file
-					block = 'data "%sdatplot%i_%i.dat" d%i\n'%(s2gd.tind,curfig.fignum,curfig.plotcntr,curfig.plotcntr)
-					block+= 'd%i'%curfig.plotcntr+									\
+					block = 'data "%sdatplot%i_%i.dat" d%i\n'%(s2gd.tind,curfig.fignum,curfig.cntr,curfig.cntr)
+					block+= 'd%i'%curfig.cntr+									\
 								' impulses '*bool(match(r'stem',marker))+ 	\
 								plt['lstyle']+								\
 								plt['lwidth']+								\
@@ -156,18 +159,18 @@ with open(rname,'r') as sf_orig:
 					if match(r'semilog[xy]?',marker): curfig.axopt+=marker[-1]+'axis log\n'
 					elif match(r'loglog',marker): 	  curfig.axopt+='xaxis log\nyaxis log\n'
 				elif marker == 'bar':
-					bar = s2gf.read_bar(l,curfig.fignum,curfig.plotcntr)
+					bar = s2gf.read_bar(l,curfig.fignum,curfig.cntr)
 					# -> write to temp script file
 					sf_tmp.write(bar['script'])
 					# -> write to temp gle file
 					# --- xtra
-					block  = 'data "%sdatbar%i_%i_side.dat"\n'%(s2gd.tind,curfig.fignum,curfig.plotcntr,curfig.plotcntr)
-					block += 'ncols_ = datayvalue(d%i,1)\n'%(curfig.plotcntr)
-					block += 'bstr_$ = "d%i"\n'%(curfig.plotcntr+1)
+					block  = 'data "%sdatbar%i_%i_side.dat"\n'%(s2gd.tind,curfig.fignum,curfig.cntr,curfig.cntr)
+					block += 'ncols_ = datayvalue(d%i,1)\n'%(curfig.cntr)
+					block += 'bstr_$ = "d%i"\n'%(curfig.cntr+1)
 					block += 'for k=1 to ncols_-1, bstr_$=bstr_$+",d"+num$(k),next k\n'
 					# # ---
-					# block  = 'data "%sdatbar%i_%i.dat" bstr_$ \n'%(s2gd.tind,curfig.fignum,curfig.plotcntr)
-					# block += 'bar d%i color %s fill %s width %f\n'%(curfig.plotcntr+1,bar['edgecolor'],bar['facecolor'],bar['width'])
+					# block  = 'data "%sdatbar%i_%i.dat" bstr_$ \n'%(s2gd.tind,curfig.fignum,curfig.cntr)
+					# block += 'bar d%i color %s fill %s width %f\n'%(curfig.cntr+1,bar['edgecolor'],bar['facecolor'],bar['width'])
 					#
 					xaxisopt  = ''
 					if not bar['flticks']:
@@ -180,7 +183,7 @@ with open(rname,'r') as sf_orig:
 					#
 					curfig.plot  += block
 					curfig.trsp   = curfig.trsp or bar['alpha']
-					curfig.plotcntr     += 1
+					curfig.cntr     += 1
  			# -------------------------
  			# AXIS LINES (pass in temp)
  			# (atm, ignore fontsize)
@@ -291,7 +294,7 @@ with open(rname,'r') as sf_orig:
 					# prepend the script to stack of lines
 					script_stack = script.readlines()+script_stack
 		# if figure remains -> append it
-		if curfig.plotcntr:
+		if curfig.cntr:
 			figlist.append(curfig)
 		#
 		sf_tmp.write('\n%s\n'%s2gd.csd['exit'])
