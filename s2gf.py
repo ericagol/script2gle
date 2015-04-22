@@ -19,8 +19,8 @@ strip_d      = lambda s,d: sub(d,'',s)
 # get first argument (cf getfargs)
 getarg1      = lambda l: strip_d(get_fargs(l)[0],'\'')
 # get next arg
-getnextarg   = lambda lst: strip_d(lst.pop(0).lower(),'\'')
-getnextargNL = lambda lst: strip_d(lst.pop(0),'\'')
+getnextarg   = lambda lst: lst.pop(0).lower().strip('\'')
+getnextargNL = lambda lst: lst.pop(0).strip('\'')
 #
 ###########################
 # FUNCTIONS ###############
@@ -123,7 +123,7 @@ def get_color(optstack):
 		optstack.pop(0)
 		opta  = getnextarg(optstack)
 		# col -> rgba (using svg2rgb dictionary see s2gd.srd)
-		r,g,b = s2gd.srd.setdefault(opt,(128,128,128))
+		r,g,b = s2gd.srd.get(opt,(128,128,128))
 		a     = round(float(opta)*100)
 		color = 'rgba255(%i,%i,%i,%2.1f)'%(r,g,b,a)
 	else: # just colname
@@ -131,12 +131,14 @@ def get_color(optstack):
 		# if in matlab format (otherwise x11 name)
 		if color in ['r','g','b','c','m','y','k','w']:
 			color = s2gd.md[color]
-	return color, a, optstack
+	trsp = False if a==0 or a=='1' else True
+	return color,trsp,optstack
 #
 # +++++++++++++++++++++++++++++++++++++++++++
 def close_ellipsis(l,script_stack):
 	# gather lines in case continuation (...)
-	srch_cl = search(r'(.*?)\.\.\.',l)
+	regex   = r'(.*?)(?:\.\.\.\s*(?:%s.*)?$)'%s2gd.csd['comment']
+	srch_cl = search(regex,l)
 	if srch_cl:
 		line_open = True
 		nloops = 0
@@ -144,14 +146,14 @@ def close_ellipsis(l,script_stack):
 		while line_open and nloops<100:
 			nloops += 1
 			lt      = script_stack.pop(0)
-			srch_cl = search(r'(.*?)\.\.\.',lt)
+			srch_cl = search(regex,lt)
 			if srch_cl:
 				l  += srch_cl.group(1)
 			else:
 				line_open = False
 				l+=lt
 		if line_open:
-			raise S2GSyntaxError(l)
+			raise S2GSyntaxError(l,'<::line not closed::>')
 	return l, script_stack
 #
 # +++++++++++++++++++++++++++++++++++++++++++
@@ -232,7 +234,7 @@ def read_plot(line, figc, plotc):
 				#
 				# color
 				l_4 = lstyle.group(4)
-				tls['color'] = s2gd.md.setdefault(l_4,'blue')
+				tls['color'] = s2gd.md.get(l_4,'blue')
 			#
 			# COLOR OPTION (accept x11 names)
 			#
@@ -275,142 +277,6 @@ def read_plot(line, figc, plotc):
 	color  = 'color '+tls['color']
 	plt['lstyle'] = ' '+line+' '+marker+' '+color+' '
 	return plt
-#
-# +++++++++++++++++++++++++++++++++++++++++++
-# READ FILL:
-#	read a 'fill(...)' line, extracts script
-#	code to output data, generates GLE bloc
-#	to input in GLE figure
-#
-#	<in>:	line (from core part of script doc)
-#	<out>:	returns line + output line
-def read_fill(line,figc,plotc):
-	fill = {}
-	# default options
- 	fill['color'] = 'gray'
- 	fill['alpha'] = False
- 	# get plot arguments
- 	args = get_fargs(line)
- 	# ------------------------------------------
- 	# SCRIPT -----------------------------------
- 	# generate script to output appropriate data
- 	# > syntax:
- 	# 	command: fill([x,fliplr(x)],[y,fliplr(y2)],...)
- 	#				...,matlabcol|rgb|rgba
- 	#				...,'color',svgname,'alpha'?,0.8
- 	#
- 	xname  = search(r'\[\s*([a-zA-Z][a-zA-Z0-9]*)\s*',args[0]).group(1)
- 	yname1 = search(r'\[(.*?),\s*fliplr',args[1]).group(1)
- 	yname2 = search(r',\s*fliplr\((.*?)\)\s*\]',args[1]).group(1)
- 	a='1' # alpha
- 	if len(args)>2:
-		optsraw = args[2:]
-		while optsraw:
-			opt = getnextarg(optsraw)
-			if opt in ['r','g','b','c','m','y','k','w']:
-				fill['color']=s2gd.md[opt]
-			elif opt=='color':
-				fill['color'],a,optsraw = get_color(optsraw) 	
- 	#
- 	if not a=='1': fill['alpha']=True
- 	#
-	script = 'x__  = %s%s\n'%(xname ,s2gd.csd['EOL'])
-	script+= 'y1__ = %s%s\n'%(yname1,s2gd.csd['EOL'])
-	script+= 'y2__ = %s%s\n'%(yname2,s2gd.csd['EOL'])
-  	#
-  	vecx   = s2gd.csd['vec']%'x__'
-  	vecy1  = s2gd.csd['vec']%'y1__'
-  	vecy2  = s2gd.csd['vec']%'y2__'
- 	script+= 'c__ = %s%s\n'%(s2gd.csd['cbind']%(s2gd.csd['cbind']%(vecx,vecy1),vecy2),s2gd.csd['EOL'])
-	dfn    = '%sdatfill%i_%i.dat'%(s2gd.tind,figc,plotc)
-  	script+= '%s%s\n'%(s2gd.csd['writevar'].format(dfn,'c__'),s2gd.csd['EOL'])
- 	#
- 	fill['script'] = script
- 	return fill
-#
-# +++++++++++++++++++++++++++++++++++++++++++
-# READ HIST:
-#	read a 'hist(...)' line, extracts script
-#	code to output data, generates GLE bloc
-#	to input in GLE figure
-#
-#	<in>:	line (from core part of script doc)
-#	<out>:	returns line + output line
-def read_hist(line,figc,plotc):
-	hist = {}
-	# default options
- 	hist['edgecolor'] = 'white'
- 	hist['facecolor'] = 'cornflowerblue'
- 	hist['alpha'] 	  = False
- 	hist['norm']	  = 'count'
- 	hist['from'] 	  = ''
- 	hist['to']		  = ''
- 	nbins 			  = 0
- 	# get plot arguments
- 	args = get_fargs(line)
- 	# ------------------------------------------
- 	# SCRIPT -----------------------------------
- 	# generate script to output appropriate data
- 	# > syntax:
- 	# 	command: hist(x,...)
- 	#	 			...,'Normalization','count|countdensity|probability|pdf|cumcount|cdf'
- 	#				...,'Facecolor',svgcol|matlabcol|rgb|rgba,'Alpha'?,0.8
- 	#				...,'Edgecolor',svgcol|matlabcol|rgb
- 	#
- 	xname  = strip_d(args.pop(0),'\'')
- 	a='1' # alpha
- 	b='1' # alpha for edge (a bit weird but up to the user to decided)
- 	if args:
-	 	optsraw = args
-	 	while optsraw:
-	 		opt = getnextarg(optsraw)
-	 		if   opt == 'normalization':
-	 			normalization = getnextarg(optsraw)
-	 			if normalization in ['count','probability','countdensity','pdf']:
-	 				hist['norm'] = normalization
-	 			elif normalization in ['cumcount','cdf']:
-					print '\nwarning::S2G::HIST::cumcount/cdf not handled, going default (count)\n'
-	 			else:
-					print '\nwarning::S2G::HIST::unknown normalization, going default (count)\n'
-			elif opt == 'nbins' or opt.isdigit():
-				if opt == 'nbins':
-					opt = getnextargNL(optsraw)
-				nbins = opt
-			elif opt == 'from':
-				hist['from'] = getnextargNL(optsraw)
-			elif opt == 'to':
-				hist['to'] = getnextargNL(optsraw)
-	 		elif opt in ['r','g','b','c','m','y','k','w']:
-				hist['facecolor']=s2gd.md[opt]
-			elif opt in ['color','facecolor']:
-				hist['facecolor'],a,optsraw = get_color(optsraw)
-	 		elif opt=='edgecolor':
-	 			hist['edgecolor'],b,optsraw = get_color(optsraw)
-	#
- 	if not (a=='1' or b=='1'): hist['alpha']=True
- 	#
-	script = 'x__  = %s%s\n'%(xname,s2gd.csd['EOL']) 
-	vecx   = s2gd.csd['vec']%'x__'
-	dfn    = "%sdathist%i_%i.dat"%(s2gd.tind,figc,plotc)
-  	script+= '%s%s\n'%(s2gd.csd['writevar'].format(dfn,'x__'),s2gd.csd['EOL'])
-  	if not hist['from']:
-  		script+= 'xmin__ = %s%s\n'%(s2gd.csd['minvec']%vecx,s2gd.csd['EOL'])
- 	else:
- 		script+= 'xmin__ = %s%s\n'%(hist['from'],s2gd.csd['EOL'])
- 	if not hist['to']:
- 		script+= 'xmax__ = %s%s\n'%(s2gd.csd['maxvec']%vecx,s2gd.csd['EOL'])
-	else:
-	 	script+= 'xmax__ = %s%s\n'%(hist['to'],s2gd.csd['EOL'])
- 	if not nbins:
- 		script+='nbins__ = %s%s\n'%(s2gd.csd['autobins'].format(s2gd.csd['lenvec']%vecx),s2gd.csd['EOL'])
- 	else:
- 		script+='nbins__ = %s%s\n'%(nbins,s2gd.csd['EOL'])
- 	script+= 'c2__ = %s%s\n'%(s2gd.csd['rbind']%(s2gd.csd['rbind']%('xmin__','xmax__'),'nbins__'),s2gd.csd['EOL']) 
-	dfn2   = "%sdathist%i_%i_side.dat"%(s2gd.tind,figc,plotc)
-  	script+= '%s%s\n'%(s2gd.csd['writevar'].format(dfn2,'c2__'),s2gd.csd['EOL'])
- 	#
- 	hist['script'] = script
- 	return hist
 #
 # +++++++++++++++++++++++++++++++++++++++++++
 # READ BAR:

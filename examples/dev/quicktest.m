@@ -11,4 +11,7 @@ plot(x,y.^2,'color','cornflowerblue')
 figure
 plot(x,sqrt(y),'color','brickred')
 figure
-fill([x,fliplr(x)],[y,fliplr(y2)])
+fill([x,fliplr(x)],[y,fliplr(y2)],'color','indianred')%,'alpha',0.4)
+
+z = randn(500,1);
+hist(z,'norm','pdf','facecolor','cornflowerblue')%,'alpha',0.5,'edgecolor','black')

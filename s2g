@@ -73,8 +73,8 @@ markers_dict = {
 #	'plot'	 		: s2gap.parse_plot,
 	'fill'	 		: s2gap.parse_fill,
 	'fillbetween'	: s2gap.parse_fillbetween,	# extra syntax
-#	'hist'			: s2gap.parse_hist,
-#	'histogram'		: s2gap.parse_hist,
+	'hist'			: s2gap.parse_histogram,
+	'histogram'		: s2gap.parse_histogram,
 #	'bar'			: s2gap.parse_bar,
 	'hold'			: s2gap.parse_hold,
 #	r'[xy]lim'		: s2gap.parse_xylim,
@@ -155,47 +155,6 @@ with open(rname,'r') as sf_orig:
 					curfig.lstyles.append(plt['lstyle'])
 					if match(r'semilog[xy]?',marker): curfig.axopt+=marker[-1]+'axis log\n'
 					elif match(r'loglog',marker): 	  curfig.axopt+='xaxis log\nyaxis log\n'
-
-				# elif marker in ['fill','fillbetween']:
-				# 	if marker == 'fillbetween':
-				# 		fbargs = s2gf.get_fargs(l)
-		 	# 			l      = 'fill([%s,foo],[%s,fliplr(%s)],%s)'%(fbargs[0],fbargs[1],fbargs[2],s2gf.strip_d(str(fbargs[3:]),r'^\[|\]$'))
-		 	# 			l      = sub('"','',l)
-		 	# 		#
-				# 	fill = s2gf.read_fill(l,curfig.fignum,curfig.plotcntr)
-				# 	# -> write to temp script file
-				# 	sf_tmp.write(fill['script'])
-				# 	# -> write to temp gle file
-				# 	block    = 'data "%sdatfill%i_%i.dat" d%i d%i\n'%(s2gd.tind,curfig.fignum,curfig.plotcntr,curfig.plotcntr,curfig.plotcntr+1)
-				# 	block   += 'fill d%i,d%i color %s'%(curfig.plotcntr,curfig.plotcntr+1,fill['color'])
-				# 	curfig.plot+=block
-				# 	curfig.trsp = curfig.trsp or fill['alpha']
-
-				elif marker in ['hist','histogram']:
-					hist = s2gf.read_hist(l,curfig.fignum,curfig.plotcntr)
-					# -> write to temp script file
-					sf_tmp.write(hist['script'])
-					# -> write to temp gle file
-					# --- xtra
-					block  = 'data "%sdathist%i_%i_side.dat" d%i\n'%(s2gd.tind,curfig.fignum,curfig.plotcntr,curfig.plotcntr) # has to name: 1 col
-					block += 'xmin_  = datayvalue(d%i,1)\n'%curfig.plotcntr
-					block += 'xmax_  = datayvalue(d%i,2)\n'%curfig.plotcntr
-					block += 'nbins_ = datayvalue(d%i,3)\n'%curfig.plotcntr
-					# --- 
-					block   += 'data "%sdathist%i_%i.dat" d%i\n'%(s2gd.tind,curfig.fignum,curfig.plotcntr,curfig.plotcntr+1) # has to name: 1 col
-					curfig.plotcntr   += 1
-					block   += 'N_ = ndata(d%i)\n'%curfig.plotcntr
-					block   += 'width_ = (xmax_-xmin_)/%s\n'%('nbins_')
-					norm     = '1'
-					if   hist['norm']=='probability':  norm = '1.0/N_'
-					elif hist['norm']=='countdensity': norm = '1.0/width_'
-					elif hist['norm']=='pdf':          norm = '1.0/(N_*width_)'
-					block    += 'let d%i = hist d%i from xmin_ to xmax_ bins %s\n'%(curfig.plotcntr+1,curfig.plotcntr,'nbins_')
-					block    += 'let d%i = d%i*%s\n'%(curfig.plotcntr+1,curfig.plotcntr+1,norm)
-					block    += 'bar d%i color %s fill %s width %s\n'%(curfig.plotcntr+1,hist['edgecolor'],hist['facecolor'],'width_')
-					curfig.plot += block
-					curfig.trsp  = curfig.trsp or hist['alpha']
-					curfig.plotcntr    += 1
 				elif marker == 'bar':
 					bar = s2gf.read_bar(l,curfig.fignum,curfig.plotcntr)
 					# -> write to temp script file
