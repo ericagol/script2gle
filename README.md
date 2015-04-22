@@ -124,7 +124,7 @@ $PATHS2G/s2g smalltest.m -tex -png
 
 which should generate the figure below:
 
-![smalltest.m](/examples/octavematlab/smalltest_plot1_g.png)
+![smalltest.m](/examples/octavematlab/smalltest_fig1_g.png)
 
 another similar example with the `fillbetween` command
 
@@ -144,7 +144,7 @@ fillbetween(x,exp(-x.^2/2),exp(-abs(x)),'color','palegreen','alpha',0.7)
 
 which should generate the figure below:
 
-![smalltest2.m](/examples/octavematlab/smalltest2_plot1_g.png);
+![smalltest2.m](/examples/octavematlab/smalltest2_fig1_g.png);
 
 **Remark**: as you may have realized, `fillbetween` is not part of Matlab syntax, it's just a useful extension here, and the idea is to have a `Matlab-like` syntax but without restriction for a bit of syntactic sugar (remember, this does not have the ambition to be an award winning software (...) but rather to be a useful hack).
 
