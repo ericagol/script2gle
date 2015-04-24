@@ -70,22 +70,23 @@ s2gd.markers = r'|'.join([s2gd.markers,s2gd.csd['append']])
 # TEMP TEMP TEMP
 markers_dict = {
 	'figure' 		: s2gap.parse_figure,
-#	'plot'	 		: s2gap.parse_plot,
+	'plot'	 		: s2gap.parse_plot,
 	'fill'	 		: s2gap.parse_fill,
 	'fillbetween'	: s2gap.parse_fillbetween,	# extra syntax
 	'hist'			: s2gap.parse_histogram,
 	'histogram'		: s2gap.parse_histogram,
 #	'bar'			: s2gap.parse_bar,
 	'hold'			: s2gap.parse_hold,
-#	r'[xy]lim'		: s2gap.parse_xylim,
-#	r'[xy]label'	: s2gap.parse_xylabel,
+#	r'xylim'		: s2gap.parse_xylim,
+#	r'xylabel'		: s2gap.parse_xylabel,
 #	'title'			: s2gap.parse_title,
-#	r'[xy]?axis'	: s2gap.parse_xyaxis,
+#	r'xyaxis'		: s2gap.parse_xyaxis,
 #	'set'			: s2gap.parse_set,
 #	'legend'		: s2gap.parse_legend,
-#	r'semilog[xy]'	: s2gap.parse_semilog,
-#	'loglog'		: s2gap.parse_loglog,
-#	'stem'			: s2gap.parse_stem,
+	'semilogx'		: s2gap.parse_semilogx,
+	'semilogy'		: s2gap.parse_semilogy,
+	'loglog'		: s2gap.parse_loglog,
+	'stem'			: s2gap.parse_stem,
 #	r'(#s2g:)'		: s2gap.parse_s2g,
 	}
 def donothing(cf,l,**xa):
@@ -121,7 +122,9 @@ with open(rname,'r') as sf_orig:
 				marker = marker.group(1)
 			#
 			# PARSE LINE AFTER MARKER (call appropriate s2gap function)
-			cf,l = markers_dict.setdefault(marker,donothing)(curfig,l,figlist=figlist,no_tex=no_tex,script=sf_tmp)
+			cf,l = markers_dict.setdefault(marker,donothing)(
+						curfig,l,
+						figlist=figlist,no_tex=no_tex,script=sf_tmp)
 			if cf:
 				curfig = cf
 			# ---------
@@ -135,30 +138,11 @@ with open(rname,'r') as sf_orig:
 				#
 				# otherwise create new fig
 				else:
-					print marker
-					print curfig.plot
-					print 'I WAS ERE'
 					figlist.append(curfig)
 					curfig = s2gc.S2GFIG(curfig.fignum+1,no_tex)
 				# ------------------
-				# <- PLOT ACTIONS ->
-				if marker in ['plot','semilogx','semilogy','stem','loglog']:
-					# structify: extract code and options
-					plt = s2gf.read_plot(l,curfig.fignum,curfig.cntr)
-					# -> write to temp script file
-					sf_tmp.write(plt['script'])
-					# -> write to temp gle file
-					block = 'data "%sdatplot%i_%i.dat" d%i\n'%(s2gd.tind,curfig.fignum,curfig.cntr,curfig.cntr)
-					block+= 'd%i'%curfig.cntr+									\
-								' impulses '*bool(match(r'stem',marker))+ 	\
-								plt['lstyle']+								\
-								plt['lwidth']+								\
-								plt['msize']+'\n'
-					curfig.plot += block
-					curfig.lstyles.append(plt['lstyle'])
-					if match(r'semilog[xy]?',marker): curfig.axopt+=marker[-1]+'axis log\n'
-					elif match(r'loglog',marker): 	  curfig.axopt+='xaxis log\nyaxis log\n'
-				elif marker == 'bar':
+				#
+				if marker == 'bar':
 					bar = s2gf.read_bar(l,curfig.fignum,curfig.cntr)
 					# -> write to temp script file
 					sf_tmp.write(bar['script'])

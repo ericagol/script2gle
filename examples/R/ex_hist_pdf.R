@@ -1,5 +1,5 @@
 s = 5
-draw = rnorm(100,mean=0,sd=s);
+draw = rnorm(1000,mean=0,sd=s);
 hist(draw,20,'color','cornflowerblue', ...
 	'normalization','pdf')
 x = seq(-15,15,len=500);
