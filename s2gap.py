@@ -24,6 +24,51 @@ printdict   = lambda d: 		 ''.join([' %s %s'%v if v[1] else '' for v in d.items(
 #			  (usually just an empty string)	
 
 # -----------------------------------------------------------------------------
+def parse_hold(curfig,line,**xargs):
+	regex = r'hold\s*(off|on)?\s*?;?'
+	#
+ 	srch  = search(regex,line)
+ 	#
+	curfig.flags['holdon'] = not(srch.group(1)=='off')
+	#
+	# no new fig, rest of line
+	return 0,sub(regex,'',line)
+# -----------------------------------------------------------------------------
+def parse_label(curfig,line,**xargs):
+	# could treat fontsize here
+	al = s2gf.getarg1(line)
+	m0 = xargs['_labmarker']
+	if xargs['no_tex']:
+		curfig.axopt += '%stitle "%s"\n'%(m0,sub(r'\\','/',al))
+	else:
+		curfig.axopt += '%stitle "\\tex{%s}"\n'%(m0,sub('%','\%',al))
+	#
+	# no new fig, no rest of line
+	return 0,''
+# -----------------------------------------------------------------------------
+def parse_xlabel(curfig,line,**xargs):
+	return parse_label(curfig,line,_labmarker='x',**xargs)
+# -----------------------------------------------------------------------------
+def parse_ylabel(curfig,line,**xargs):
+	return parse_label(curfig,line,_labmarker='y',**xargs)
+# -----------------------------------------------------------------------------
+def parse_title(curfig,line,**xargs):
+	return parse_label(curfig,line,_labmarker='',**xargs)
+# -----------------------------------------------------------------------------
+def parse_lim(curfig,line,**xargs):
+	al = s2gf.array_x(s2gf.getarg1(line))
+	m0 = xargs['_axmarker']
+	curfig.axopt += '%saxis min %s max %s\n'%(m0,al[0],al[1])
+	#
+	# no new fig, no rest of line
+	return 0,''
+# -----------------------------------------------------------------------------
+def parse_xlim(curfig,line,**xargs):
+	return parse_lim(curfig,line,_axmarker='x',**xargs)
+# -----------------------------------------------------------------------------
+def parse_ylim(curfig,line,**xargs):
+	return parse_lim(curfig,line,_axmarker='y',**xargs)
+# -----------------------------------------------------------------------------
 def parse_figure(curfig,line,**xargs):
 	# increment fig counter if needed
 	fn = checkfig(curfig)
@@ -36,86 +81,166 @@ def parse_figure(curfig,line,**xargs):
 	# return a new S2G figure + rest of line
 	return S2GFIG(fn,xargs['no_tex']),sub(regex,'',line)
 # -----------------------------------------------------------------------------
-def parse_hold(curfig,line,**xargs):
-	regex = r'hold\s*(off|on)?\s*?;?'
-	#
- 	srch  = search(regex,line)
- 	#
-	curfig.flags['holdon'] = not(srch.group(1)=='off')
-	#
-	# no new fig, rest of line
-	return 0,sub(regex,'',line)
+def parse_legend(curfig,line,**xargs):
+	# legend as stack
+	leg_stack = s2gf.get_fargs(line)
+	leg_c 	  = 0
+	while leg_stack:
+		leg_i_str = s2gf.getnextarg(leg_stack)
+		if   leg_i_str == 'location':
+			leg_loc       = s2gf.getnextarg(leg_stack)
+			curfig.legpos = 'pos %s'%s2gd.leg_dict.get(leg_loc,'tr')
+		elif leg_i_str == 'boxoff':
+			curfig.legopt+= ' nobox'
+		elif leg_i_str == 'offset':
+			leg_off       = s2gf.array_x(leg_stack.pop(0))
+			curfig.legoff = ' offset '+' '.join(leg_off)
+		else:
+			if no_tex: leg_i_str = sub(r'\\','/',leg_i_str)
+			#
+			try:
+				curfig.legend += 'text "%s" %s\n'%(leg_i_str,curfig.lstyles[leg_c])
+				leg_c         += 1
+			except IndexError, e:
+				print '\nerror::S2G:: too many legends, did you forget a HOLD?\n'
 # -----------------------------------------------------------------------------
-def parse_fill(curfig,line,**xargs):
-	#
-	args = s2gf.get_fargs(line)
-	#
-	x  = search(r'\[\s*([a-zA-Z][a-zA-Z0-9]*)\s*',args[0]).group(1)
-	y1 = search(r'\[(.*?)[,\s]\s*fliplr',args[1]).group(1)
-	y2 = search(r'fliplr\((.*?)\)\s*\]', args[1]).group(1)
-	#
-	# convert to "fillbetween" syntax
-	line  = 'fillbetween(%s,%s,%s'%(x,y1,y2)
-	line += '' if len(args)<3 else ','+','.join(args[2:])
-	line += ')\n'
-	#
-	# feed to fillbetween parser
-	return parse_fillbetween(curfig,line,script=xargs['script'])
-# -----------------------------------------------------------------------------
-def parse_fillbetween(curfig,line,**xargs):
+def parse_plot(curfig,line,**xargs):
 	# increment plot counter if figure held or if was 0
 	curfig.cntr += checkplot(curfig)
 	#
-	# syntax: fillbetween(x,y1,y2,...)
-	args 	= s2gf.get_fargs(line)
-	x,y1,y2 = args[0:3]
-	optsraw = '' if len(args)<4 else args[3:]
+	# syntax: plot(x,  ...)
+	# 		  plot(x,y,...)
+	args = s2gf.get_fargs(line)
+	x    = args[0]
+	idx  = 1
+	if len(args)>1: 
+		# plot(x,...)
+		if args[1].strip()[0] == "'": 
+			# plot(x, '...')
+			y,optsraw = '', args[1:]
+		else: 
+			# plot(x,y,...)
+			y,optsraw = args[1], '' if len(args)<3 else args[2:]
+	else: 
+		# plot(x)
+		y,optsraw = '', ''
+	#
 	# treat options
 	# > default dictionaries
-	opt_style = { 
-		'color'	: 'gray',	# default fill color
+	opt_style = {
+		'color'	 : 'darkblue',
+		'lstyle' : '0',
+		'lwidth' : '0',
+		'marker' : '',
+		'msize'	 : '0.2',
 	}
 	opt_comp = {
-		'alpha'	: False,	# default transparency
 	}
 	while optsraw:
 		opt = s2gf.getnextarg(optsraw)
-		# color / style
-		if opt in ['r','g','b','c','m','y','k','w']:
-			opt_style['color'] = s2gd.md[opt]
+		#
+		# QUICK SYNTAX (eg '-ro')
+		re_lstyle = r'^(?![ml0-9])([-:]?)([-\.]?)([\+o\*\.xs\^]?)([rgbcmykw]?)'
+		ma_lstyle = match(re_lstyle,opt)
+		if ma_lstyle:
+			opt_style['lstyle'] = '' # in case only marker
+			l_1,l_2,l_3,l_4 = ma_lstyle.group(1,2,3,4)
+			# line (continuous, dashed, ...)
+			if   match(r':', l_1):
+				opt_style['lstyle'] = '2' 	# dotted
+			elif match(r'-', l_1) and match(r'\.',l_2):
+			 	opt_style['lstyle'] = '6'	# dashed-dotted
+			elif match(r'-', l_1) and match(r'-', l_2):
+			 	opt_style['lstyle'] = '3'	# dashed
+			elif match(r'-', l_1):
+				opt_style['lstyle'] = '0'	# standard
+			# marker
+			if   match(r'\+',l_3): 	
+				opt_style['marker'] = 'plus'
+			elif match(r'o', l_3):	
+				opt_style['marker'] = 'circle'
+			elif match(r'\*',l_3): 	
+				opt_style['marker'] = 'star'
+			elif match(r'x', l_3):	
+				opt_style['marker'] = 'cross'
+			elif match(r's', l_3):	
+				opt_style['marker'] = 'square'
+			elif match(r'\^',l_3):	
+				opt_style['marker'] = 'triangle'
+			# color
+			opt_style['color'] = s2gd.md.get(l_4,'darkblue')
+		#
 		elif opt == 'color':
-			opt_style['color'],alpha,optsraw     = s2gf.get_color(optsraw)
-			opt_comp['alpha'] = opt_comp['alpha'] or alpha
+			opt_style['color'],foo,optsraw = s2gf.get_color(optsraw)
+		elif opt in ['linewidth','lwidth']:
+			opt = s2gf.getnextarg(optsraw)
+			# black magic...
+			opt_style['lwidth'] = str(round(((float(opt)/3)**.7)/10,2))
+		elif opt in ['markersize','msize']:
+			opt = s2gf.getnextarg(optsraw)
+			# black magic...
+			opt_style['msize'] = str(round(((float(opt)/5)**.5)/5,2))
+		elif opt in ['markerfacecolor','mfcol']:
+			opt = s2gf.getnextarg(optsraw) # will not be considered
+			cm  = opt_style['marker']
+			cm2 = 'f' if cm in ['circle','triangle','square'] else ''  
+			opt_style['marker'] = cm2+cm
 		else:
-			raise S2GSyntaxError(line,'<::unknown option in fill::>')
+			raise S2GSyntaxError(line,'<::unknown option in plot::>')			
 	#
 	# name of data file
-	dfn 	= '%sdatfill%i_%i.dat'%(s2gd.tind,curfig.fignum,curfig.cntr)
+	dfn = '%sdatplot%i_%i.dat'%(s2gd.tind,curfig.fignum,curfig.cntr)
 	#
 	# <ADD TO SCRIPT FILE>
-	script  = ''
-	script += addscrvar('x__', x)
-	script += addscrvar('y1__',y1)
-	script += addscrvar('y2__',y2)
-	# > col vectors
-	vx,vy1,vy2 = [s2gd.csd['vec']%e for e in ['x__','y1__','y2__']]
-	# > cbind col vectors
-	script += addscrvar('c__', s2gd.csd['cbind2']([vx, vy1, vy2]))
-	# > write vars
+	script = ''
+	if y:
+		script += addscrvar('x__',x)
+		script += addscrvar('y__',y)
+	else:
+		script += addscrvar('y__',x)
+		script += addscrvar('x__',s2gd.csd['span']%s2gd.csd['numel']%'y__')	
+	vx,vy   = s2gd.csd['vec']%'x__', s2gd.csd['vec']%'y__'
+	script += addscrvar('c__',s2gd.csd['cbind']%(vx,vy))
 	script += addscrwrite('c__',dfn)
 	# > write script
 	xargs['script'].write(script)
 	#
 	# <ADD TO GLE FILE>
-	curfig.plot += 'data "%s" d%i d%i\n'%(dfn,curfig.cntr,curfig.cntr+1)
-	curfig.plot += 'fill d%i,d%i'%(curfig.cntr,curfig.cntr+1)
-	# > write style options
-	curfig.plot += ''.join([' %s %s'%v for v in opt_style.items()])+'\n'
-	# > flags
-	curfig.trsp = curfig.trsp or opt_comp['alpha']
+	# -- reading data
+	curfig.plot += 'data "%s" d%i\n'%(dfn,curfig.cntr)
+	# -- doing the plot
+	stem = 'impulses' if xargs.get('stem',False) else ''
+	curfig.plot += 'd%i line %s'%(curfig.cntr,stem)
+	curfig.plot += printdict(opt_style)
+	#
+	# store lstyles for legend
+	lb,mb  = bool(opt_style['lstyle']),bool(opt_style['marker'])
+	lbool  = lb or not mb
+	lsty   = opt_style['lstyle']+'0'*(not lb)
+	line   = ('lstyle '+lsty)*lbool
+	#fill   = 'f'*(opt_style['marker'] in ['circle','square','triangle'])*flags['mface']
+	marker = 'marker '*mb+opt_style['marker']
+	color  = 'color '+opt_style['color']
+	lstyle = ' '+line+' '+marker+' '+color+' '
+	curfig.lstyles.append(lstyle)
 	#
 	# no newfig, no rest of line
 	return 0,''
+# -----------------------------------------------------------------------------
+def parse_stem(curfig,line,**xargs):
+	return parse_plot(curfig,line,stem=True,**xargs)
+# -----------------------------------------------------------------------------
+def parse_semilogx(curfig,line,**xargs):
+	curfig.axopt += 'xaxis log\n'
+	return parse_plot(curfig,line,**xargs)
+# -----------------------------------------------------------------------------
+def parse_semilogy(curfig,line,**xargs):
+	curfig.axopt += 'yaxis log\n'
+	return parse_plot(curfig,line,**xargs)
+# -----------------------------------------------------------------------------
+def parse_loglog(curfig,line,**xargs):
+	curfig.axopt += 'xaxis log\nyaxis log\n'
+	return parse_plot(curfig,line,**xargs)
 # -----------------------------------------------------------------------------
 def parse_histogram(curfig,line,**xargs):
 	# increment plot counter if figure held or if was 0
@@ -228,127 +353,74 @@ def parse_histogram(curfig,line,**xargs):
 	# no newfig, no rest of line
 	return 0,''
 # -----------------------------------------------------------------------------
-def parse_stem(curfig,line,**xargs):
-	return parse_plot(curfig,line,stem=True,**xargs)
+def parse_fill(curfig,line,**xargs):
+	#
+	args = s2gf.get_fargs(line)
+	#
+	x  = search(r'\[\s*([a-zA-Z][a-zA-Z0-9]*)\s*',args[0]).group(1)
+	y1 = search(r'\[(.*?)[,\s]\s*fliplr',args[1]).group(1)
+	y2 = search(r'fliplr\((.*?)\)\s*\]', args[1]).group(1)
+	#
+	# convert to "fillbetween" syntax
+	line  = 'fillbetween(%s,%s,%s'%(x,y1,y2)
+	line += '' if len(args)<3 else ','+','.join(args[2:])
+	line += ')\n'
+	#
+	# feed to fillbetween parser
+	return parse_fillbetween(curfig,line,script=xargs['script'])
 # -----------------------------------------------------------------------------
-def parse_semilogx(curfig,line,**xargs):
-	curfig.axopt += 'xaxis log\n'
-	return parse_plot(curfig,line,**xargs)
-# -----------------------------------------------------------------------------
-def parse_semilogy(curfig,line,**xargs):
-	curfig.axopt += 'yaxis log\n'
-	return parse_plot(curfig,line,**xargs)
-# -----------------------------------------------------------------------------
-def parse_loglog(curfig,line,**xargs):
-	curfig.axopt += 'xaxis log\nyaxis log\n'
-	return parse_plot(curfig,line,**xargs)
-# -----------------------------------------------------------------------------
-def parse_plot(curfig,line,**xargs):
+def parse_fillbetween(curfig,line,**xargs):
 	# increment plot counter if figure held or if was 0
 	curfig.cntr += checkplot(curfig)
 	#
-	# syntax: plot(x,  ...)
-	# 		  plot(x,y,...)
-	args = s2gf.get_fargs(line)
-	x    = args[0]
-	idx  = 1
-	if len(args)>1: 
-		# plot(x,...)
-		if args[1].strip()[0] == "'": 
-			# plot(x, '...')
-			y,optsraw = '', args[1:]
-		else: 
-			# plot(x,y,...)
-			y,optsraw = args[1], '' if len(args)<3 else args[2:]
-	else: 
-		# plot(x)
-		y,optsraw = '', ''
-	#
+	# syntax: fillbetween(x,y1,y2,...)
+	args 	= s2gf.get_fargs(line)
+	x,y1,y2 = args[0:3]
+	optsraw = '' if len(args)<4 else args[3:]
 	# treat options
 	# > default dictionaries
-	opt_style = {
-		'color'	 : 'darkblue',
-		'lstyle' : '0',
-		'lwidth' : '0',
-		'marker' : '',
-		'msize'	 : '0.2',
+	opt_style = { 
+		'color'	: 'gray',	# default fill color
 	}
 	opt_comp = {
+		'alpha'	: False,	# default transparency
 	}
 	while optsraw:
 		opt = s2gf.getnextarg(optsraw)
-		#
-		# QUICK SYNTAX (eg '-ro')
-		re_lstyle = r'^(?![ml0-9])([-:]?)([-\.]?)([\+o\*\.xs\^]?)([rgbcmykw]?)'
-		ma_lstyle = match(re_lstyle,opt)
-		if ma_lstyle:
-			l_1,l_2,l_3,l_4 = ma_lstyle.group(1,2,3,4)
-			# line (continuous, dashed, ...)
-			if   match(r':', l_1):
-				opt_style['lstyle'] = '2' 	# dotted
-			elif match(r'-', l_1) and match(r'\.',l_2):
-			 	opt_style['lstyle'] = '6'	# dashed-dotted
-			elif match(r'-', l_1) and match(r'-', l_2):
-			 	opt_style['lstyle'] = '3'	# dashed
-			elif match(r'-', l_1):
-				opt_style['lstyle'] = '0'	# standard
-			# marker
-			if   match(r'\+',l_3): 	
-				opt_style['marker'] = 'plus'
-			elif match(r'o', l_3):	
-				opt_style['marker'] = 'circle'
-			elif match(r'\*',l_3): 	
-				opt_style['marker'] = 'star'
-			elif match(r'x', l_3):	
-				opt_style['marker'] = 'cross'
-			elif match(r's', l_3):	
-				opt_style['marker'] = 'square'
-			elif match(r'\^',l_3):	
-				opt_style['marker'] = 'triangle'
-			# color
-			opt_style['color'] = s2gd.md.get(l_4,'darkblue')
-		#
+		# color / style
+		if opt in ['r','g','b','c','m','y','k','w']:
+			opt_style['color'] = s2gd.md[opt]
 		elif opt == 'color':
-			opt_style['color'],foo,optsraw = s2gf.get_color(optsraw)
-		elif opt in ['linewidth','lwidth']:
-			opt = s2gf.getnextarg(optsraw)
-			# black magic...
-			opt_style['lwidth'] = str(round(((float(opt)/3)**.7)/10,2))
-		elif opt in ['markersize','msize']:
-			opt = s2gf.getnextarg(optsraw)
-			# black magic...
-			opt_style['msize'] = str(round(((float(opt)/5)**.5)/5,2))
-		elif opt in ['markerfacecolor','mfcol']:
-			cm  = opt_style['marker']
-			cm2 = 'f' if cm in ['circle','triangle','square'] else ''  
-			opt_style['marker'] = cm2+cm
+			opt_style['color'],alpha,optsraw     = s2gf.get_color(optsraw)
+			opt_comp['alpha'] = opt_comp['alpha'] or alpha
 		else:
-			raise S2GSyntaxError(line,'<::unknown option in plot::>')			
+			raise S2GSyntaxError(line,'<::unknown option in fill::>')
 	#
 	# name of data file
-	dfn = '%sdatplot%i_%i.dat'%(s2gd.tind,curfig.fignum,curfig.cntr)
+	dfn 	= '%sdatfill%i_%i.dat'%(s2gd.tind,curfig.fignum,curfig.cntr)
 	#
 	# <ADD TO SCRIPT FILE>
-	script = ''
-	if y:
-		script += addscrvar('x__',x)
-		script += addscrvar('y__',y)
-	else:
-		script += addscrvar('y__',x)
-		script += addscrvar('x__',s2gd.csd['span']%s2gd.csd['numel']%'y__')	
-	vx,vy   = s2gd.csd['vec']%'x__', s2gd.csd['vec']%'y__'
-	script += addscrvar('c__',s2gd.csd['cbind']%(vx,vy))
+	script  = ''
+	script += addscrvar('x__', x)
+	script += addscrvar('y1__',y1)
+	script += addscrvar('y2__',y2)
+	# > col vectors
+	vx,vy1,vy2 = [s2gd.csd['vec']%e for e in ['x__','y1__','y2__']]
+	# > cbind col vectors
+	script += addscrvar('c__', s2gd.csd['cbind2']([vx, vy1, vy2]))
+	# > write vars
 	script += addscrwrite('c__',dfn)
 	# > write script
 	xargs['script'].write(script)
 	#
 	# <ADD TO GLE FILE>
-	# -- reading data
-	curfig.plot += 'data "%s" d%i\n'%(dfn,curfig.cntr)
-	# -- doing the plot
-	stem = 'impulses' if xargs.get('stem',False) else ''
-	curfig.plot += 'd%i line %s'%(curfig.cntr,stem)
-	curfig.plot += printdict(opt_style)
+	curfig.plot += 'data "%s" d%i d%i\n'%(dfn,curfig.cntr,curfig.cntr+1)
+	curfig.plot += 'fill d%i,d%i'%(curfig.cntr,curfig.cntr+1)
+	# > write style options
+	curfig.plot += ''.join([' %s %s'%v for v in opt_style.items()])+'\n'
+	# > flags
+	curfig.trsp = curfig.trsp or opt_comp['alpha']
 	#
 	# no newfig, no rest of line
 	return 0,''
+# -----------------------------------------------------------------------------

@@ -75,18 +75,20 @@ markers_dict = {
 	'fillbetween'	: s2gap.parse_fillbetween,	# extra syntax
 	'hist'			: s2gap.parse_histogram,
 	'histogram'		: s2gap.parse_histogram,
-#	'bar'			: s2gap.parse_bar,
 	'hold'			: s2gap.parse_hold,
-#	r'xylim'		: s2gap.parse_xylim,
-#	r'xylabel'		: s2gap.parse_xylabel,
-#	'title'			: s2gap.parse_title,
-#	r'xyaxis'		: s2gap.parse_xyaxis,
-#	'set'			: s2gap.parse_set,
-#	'legend'		: s2gap.parse_legend,
+	'xlim'			: s2gap.parse_xlim,
+	'ylim'			: s2gap.parse_ylim,
+	'xlabel'		: s2gap.parse_xlabel,
+	'ylabel'		: s2gap.parse_ylabel,
+	'title'			: s2gap.parse_title,
 	'semilogx'		: s2gap.parse_semilogx,
 	'semilogy'		: s2gap.parse_semilogy,
 	'loglog'		: s2gap.parse_loglog,
 	'stem'			: s2gap.parse_stem,
+#	'bar'			: s2gap.parse_bar,
+#	'axis'			: s2gap.parse_axis,
+#	'set'			: s2gap.parse_set,
+#	'legend'		: s2gap.parse_legend,
 #	r'(#s2g:)'		: s2gap.parse_s2g,
 	}
 def donothing(cf,l,**xa):
@@ -127,62 +129,14 @@ with open(rname,'r') as sf_orig:
 						figlist=figlist,no_tex=no_tex,script=sf_tmp)
 			if cf:
 				curfig = cf
-			# ---------
-			# PLOT LINE
-			if match(r'(?:plot|semilog[xy]|stem|loglog|fill|fillbetween|hist|histogram|bar)$',marker):
-				#
-				# if holding, add plot to current fig
-				if curfig.flags['holdon'] or not curfig.nplots:
-					curfig.cntr	  += 1
-					curfig.nplots += 1
-				#
-				# otherwise create new fig
-				else:
-					figlist.append(curfig)
-					curfig = s2gc.S2GFIG(curfig.fignum+1,no_tex)
-				# ------------------
-				#
-				if marker == 'bar':
-					bar = s2gf.read_bar(l,curfig.fignum,curfig.cntr)
-					# -> write to temp script file
-					sf_tmp.write(bar['script'])
-					# -> write to temp gle file
-					# --- xtra
-					block  = 'data "%sdatbar%i_%i_side.dat"\n'%(s2gd.tind,curfig.fignum,curfig.cntr,curfig.cntr)
-					block += 'ncols_ = datayvalue(d%i,1)\n'%(curfig.cntr)
-					block += 'bstr_$ = "d%i"\n'%(curfig.cntr+1)
-					block += 'for k=1 to ncols_-1, bstr_$=bstr_$+",d"+num$(k),next k\n'
-					# # ---
-					# block  = 'data "%sdatbar%i_%i.dat" bstr_$ \n'%(s2gd.tind,curfig.fignum,curfig.cntr)
-					# block += 'bar d%i color %s fill %s width %f\n'%(curfig.cntr+1,bar['edgecolor'],bar['facecolor'],bar['width'])
-					#
-					xaxisopt  = ''
-					if not bar['flticks']:
-						xaxisopt+='nofirst nolast '
-					if bar['xdticks']:
-						xaxisopt+='dticks %s '%bar['xdticks']
-					#
-					if xaxisopt:
-						block += 'xaxis '+xaxisopt+'\n'
-					#
-					curfig.plot  += block
-					curfig.trsp   = curfig.trsp or bar['alpha']
-					curfig.cntr     += 1
+
+#
+#	UNDER DEVELOPMENT: EVERYTHING BELOW HERE SHOULD BE IN S2GAP
+#	NEED TO DEVELOP A COMPLETE TEST SUITE
+#
  			# -------------------------
  			# AXIS LINES (pass in temp)
- 			# (atm, ignore fontsize)
- 			elif match(r'(?:[xy]label|title)$',marker):
- 				al = s2gf.getarg1(l)
- 				marker = '' if (marker=='title') else marker[0]
- 				if no_tex:
- 					curfig.axopt+=marker+'title "%s"\n'%sub(r'\\','/',al)
- 				else:
- 					curfig.axopt+=marker+'title "\\tex{%s}"\n'%sub('%','\%',al)
-			elif match(r'(?:[xy]lim)$',marker):
- 				al  = s2gf.getarg1(l)
- 				al_ = s2gf.array_x(al)
- 				curfig.axopt+='%saxis min %s max %s\n'%(marker[0],al_[0],al_[1])
- 			elif marker=='axis':
+ 			if marker=='axis':
  				if match(r'axis\(',l):
 	 				al  = s2gf.getarg1(l)
 	 				al_ = s2gf.array_x(al)
