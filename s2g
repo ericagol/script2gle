@@ -65,32 +65,36 @@ elif fext == '.m':
 		s2gd.csd['caller'] = 'matlab -nodesktop -nosplash -noFigureWindows -r'
 #
 s2gd.ignored+= r'|^\s*%s'%s2gd.csd['comment']
-s2gd.markers = r'|'.join([s2gd.markers,s2gd.csd['append']])
+#s2gd.markers = r'|'.join([s2gd.markers,s2gd.csd['append']])
 #
 # TEMP TEMP TEMP
 markers_dict = {
-	'figure' 		: s2gap.parse_figure,
-	'plot'	 		: s2gap.parse_plot,
-	'fill'	 		: s2gap.parse_fill,
-	'fillbetween'	: s2gap.parse_fillbetween,	# extra syntax
-	'hist'			: s2gap.parse_histogram,
-	'histogram'		: s2gap.parse_histogram,
-	'hold'			: s2gap.parse_hold,
-	'xlim'			: s2gap.parse_xlim,
-	'ylim'			: s2gap.parse_ylim,
-	'xlabel'		: s2gap.parse_xlabel,
-	'ylabel'		: s2gap.parse_ylabel,
-	'title'			: s2gap.parse_title,
-	'semilogx'		: s2gap.parse_semilogx,
-	'semilogy'		: s2gap.parse_semilogy,
-	'loglog'		: s2gap.parse_loglog,
-	'stem'			: s2gap.parse_stem,
-#	'bar'			: s2gap.parse_bar,
-#	'axis'			: s2gap.parse_axis,
-#	'set'			: s2gap.parse_set,
-#	'legend'		: s2gap.parse_legend,
+	'figure' 			: s2gap.parse_figure,
+	'plot'	 			: s2gap.parse_plot,
+	'fill'	 			: s2gap.parse_fill,
+	'fillbetween'		: s2gap.parse_fillbetween,	# extra syntax
+	'hist'				: s2gap.parse_histogram,
+	'histogram'			: s2gap.parse_histogram,
+	'hold'				: s2gap.parse_hold,
+	'xlim'				: s2gap.parse_xlim,
+	'ylim'				: s2gap.parse_ylim,
+	'xlabel'			: s2gap.parse_xlabel,
+	'ylabel'			: s2gap.parse_ylabel,
+	'title'				: s2gap.parse_title,
+	'semilogx'			: s2gap.parse_semilogx,
+	'semilogy'			: s2gap.parse_semilogy,
+	'loglog'			: s2gap.parse_loglog,
+	'stem'				: s2gap.parse_stem,
+	'set'				: s2gap.parse_set,
+	'axis'				: s2gap.parse_axis,
+	'legend'			: s2gap.parse_legend,
+	s2gd.csd['append'] 	: s2gap.parse_append,
+#	'bar'				: s2gap.parse_bar,
 #	r'(#s2g:)'		: s2gap.parse_s2g,
 	}
+allmarkers = [m[0] for m in markers_dict.items()]
+#
+# TEMP TEMP
 def donothing(cf,l,**xa):
 	return 0,l
 # TEMP TEMP TEMP
@@ -116,121 +120,24 @@ with open(rname,'r') as sf_orig:
 				continue
 			#
 			# get marker if any ('figure','plot',...)
-			marker = s2gf.match_start(s2gd.markers, l)
-			if not marker:
+			i,marker = 0,''
+			while i<len(allmarkers) and not marker:
+				marker = s2gf.match_start(allmarkers[i],l)
+				i+=1
+			if marker:
+				marker = marker.group(1)
+			else:
 				sf_tmp.write(l)
 				continue
-			else:
-				marker = marker.group(1)
 			#
 			# PARSE LINE AFTER MARKER (call appropriate s2gap function)
-			cf,l = markers_dict.setdefault(marker,donothing)(
+			cf,l,ss = markers_dict.setdefault(marker,donothing)(
 						curfig,l,
-						figlist=figlist,no_tex=no_tex,script=sf_tmp)
-			if cf:
-				curfig = cf
-
-#
-#	UNDER DEVELOPMENT: EVERYTHING BELOW HERE SHOULD BE IN S2GAP
-#	NEED TO DEVELOP A COMPLETE TEST SUITE
-#
- 			# -------------------------
- 			# AXIS LINES (pass in temp)
- 			if marker=='axis':
- 				if match(r'axis\(',l):
-	 				al  = s2gf.getarg1(l)
-	 				al_ = s2gf.array_x(al)
-	 				block = 'xaxis min '+al_[0]+' max '+al_[1]+'\n'
-	 				block+= 'yaxis min '+al_[2]+' max '+al_[3]+'\n'
-					curfig.axopt+=block
-	 			else:
-	 				# STUB STUB STUB STUB STUB
-	 				# eg: axis ij, axis tight, ...
-	 				pass
-	 				# STUB STUB STUB STUB STUB
-	 		# ---------
-	 		# SET LINES
-			elif marker=='set':
-				# -------------
-				# <- set GCA ->
-				if match(r'set\(gca',l):
-					args = s2gf.get_fargs(l)[1:] # False -> leave spaces
-					while args:
-						arg = s2gf.strip_d(args.pop(0).lower(),'\'').upper()
-						if match(r'[XY]TICK$',arg):
-							ticks = args.pop(0)
-							#
-							nc = ticks.count(':')
-							if nc==1: # format a:b
-								f,l = match(r'\[?\s*(.+)\s*:\s*(.+)\s*\]?',ticks).group(1,2),
-								num = int(floor(float(l)-float(f))+1)
-								curfig.axopt+='%saxis ftick %s dticks 1 nticks %i\n'%(arg[0],f,num)
-							elif nc==2: # format a:b:c
-								f,d,l = match(r'\[?\s*(.+?)\s*:\s*(.+?)\s*:\s*(.+?)\s*\]?',ticks).group(1,2,3)
-								num   = int(floor((float(l)-float(f))/float(d)+1))
-								curfig.axopt+='%saxis ftick %s dticks %s nticks %i\n'%(arg[0],f,d,num)
-							else: # a or [a b c]
-								ticks = s2gf.strip_d(ticks,r'\[|\]')
-								ticks = sub(',',' ',ticks)
-								curfig.axopt+='%splaces %s\n'%(arg[0],ticks)
-						elif match(r'[XY]TICKLABEL$',arg):
-							labels = s2gf.strip_d(args.pop(0),r'\[|\]')
-							labels = sub(r'\'','"',labels)
-							labels = sub(',',' ',labels)
-							if no_tex:
-								curfig.axopt+='%snames %s\n'%(arg[0],sub(r'\\','/',labels))
-							else:
-								curfig.axopt+='%snames %s\n'%(arg[0],sub('%','\%',labels))
-						elif match(r'[XY]SCALE$',arg):
-							scale = args.pop(0)
-							curfig.axopt+='%saxis log\n'%arg[0]
-						elif match(r'[XY]LIM$',arg):
-							al  = args.pop(0)
-			 				al_ = s2gf.array_x(al)
-			 				curfig.axopt+='%saxis min %s max %s\n'%(arg[0],al_[0],al_[1])
-			 			elif match(r'FONTSIZE',arg):
-			 				fs  = args.pop(0)
-			 				curfig.figoptfs = 'set hei %f'%(float(fs)/28.35/2.) # psp to cm
-				# -------------
-				# <- set GCF ->
-				elif match(r'set\(gcf',l):
-					# STUB STUB STUB STUB STUB
-					pass
-#	 		elif match(r'(#s2g:)',l):
-#	 			s = match(r'(#s2g:)(.+)$',l).group(2)+'\n'
-#				curfig.axopt+=s
-	 		# ------------
-	 		# LEGEND LINES
-			elif marker=='legend':
-				leg_stack = s2gf.get_fargs(l)
-				leg_c     = 0
-				while leg_stack:
-					leg_i_str = s2gf.strip_d(leg_stack.pop(0),'\'')
-					legistru  = leg_i_str.upper()
-					if   legistru == 'LOCATION':
-						leg_loc    = s2gf.strip_d(leg_stack.pop(0),'\'')
-						curfig.legpos = 'pos %s'%s2gd.leg_dict.setdefault(leg_loc,'tr')
-					elif legistru == 'BOXOFF':
-						curfig.legopt+= ' nobox'
-					elif legistru == 'OFFSET':
-						leg_off    = s2gf.array_x(leg_stack.pop(0))
-						curfig.legoff = ' offset '+' '.join(leg_off)
-					else:
-						if no_tex: leg_i_str = sub(r'\\','/',leg_i_str)
-						#
-						try:
-							curfig.legend += 'text "%s" %s\n'%(leg_i_str,curfig.lstyles[leg_c])
-							leg_c      += 1
-						except IndexError, e:
-							print '\nerror::S2G:: too many legends, did you forget a HOLD?\n'
-			# ------------------------
-	 		# RUN LINES (ext. scripts)
-			elif marker==s2gd.csd['append']:
-				scriptname = s2gf.strip_d(s2gf.getarg1(l),'\"')
-				print 'Appending script <', scriptname, '>...'
-				with open(scriptname,'r') as script:
-					# prepend the script to stack of lines
-					script_stack = script.readlines()+script_stack
+						figlist=figlist,no_tex=no_tex,script=sf_tmp,
+						scriptstack=script_stack)
+			if cf: curfig = cf
+			if ss: script_stack = ss		
+		# --------------------------------
 		# if figure remains -> append it
 		if curfig.cntr:
 			figlist.append(curfig)

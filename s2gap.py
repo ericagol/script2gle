@@ -1,5 +1,6 @@
 from s2gc import *
 from re import search, sub, match
+from math import floor
 
 import s2gf
 from s2ge import *
@@ -15,7 +16,7 @@ printdict   = lambda d: 		 ''.join([' %s %s'%v if v[1] else '' for v in d.items(
 #
 # PARSE FUNCTIONS
 #
-# >> return syntax is: return NEWFIG, NEWLINE
+# >> return syntax is: return NEWFIG, NEWLINE, SCRIPT STACK
 #
 # where 
 #	 > NEWFIG is 0 if no new fig needs to be created, 
@@ -23,6 +24,17 @@ printdict   = lambda d: 		 ''.join([' %s %s'%v if v[1] else '' for v in d.items(
 #	 > NEWLINE is the rest of the line to be treated,
 #			  (usually just an empty string)	
 
+# -----------------------------------------------------------------------------
+def parse_append(curfig,line,**xargs):
+	scriptname = s2gf.strip_d(s2gf.getarg1(line),'\"')
+	print 'Appending script <', scriptname, '>...'
+	with open(scriptname,'r') as script:
+		# prepend the script to stack of lines
+		script_stack = script.readlines()+xargs['scriptstack']
+	#print xargs['scriptstack']
+	#
+	# no new fig, no rest of line, no new stack
+	return 0,'',script_stack
 # -----------------------------------------------------------------------------
 def parse_hold(curfig,line,**xargs):
 	regex = r'hold\s*(off|on)?\s*?;?'
@@ -32,7 +44,7 @@ def parse_hold(curfig,line,**xargs):
 	curfig.flags['holdon'] = not(srch.group(1)=='off')
 	#
 	# no new fig, rest of line
-	return 0,sub(regex,'',line)
+	return 0,sub(regex,'',line),''
 # -----------------------------------------------------------------------------
 def parse_label(curfig,line,**xargs):
 	# could treat fontsize here
@@ -43,8 +55,8 @@ def parse_label(curfig,line,**xargs):
 	else:
 		curfig.axopt += '%stitle "\\tex{%s}"\n'%(m0,sub('%','\%',al))
 	#
-	# no new fig, no rest of line
-	return 0,''
+	# no new fig, no rest of line, no new stack
+	return 0,'',''
 # -----------------------------------------------------------------------------
 def parse_xlabel(curfig,line,**xargs):
 	return parse_label(curfig,line,_labmarker='x',**xargs)
@@ -56,12 +68,13 @@ def parse_title(curfig,line,**xargs):
 	return parse_label(curfig,line,_labmarker='',**xargs)
 # -----------------------------------------------------------------------------
 def parse_lim(curfig,line,**xargs):
+	#!<DEV:EXPR>
 	al = s2gf.array_x(s2gf.getarg1(line))
 	m0 = xargs['_axmarker']
 	curfig.axopt += '%saxis min %s max %s\n'%(m0,al[0],al[1])
 	#
-	# no new fig, no rest of line
-	return 0,''
+	# no new fig, no rest of line, no new stack
+	return 0,'',''
 # -----------------------------------------------------------------------------
 def parse_xlim(curfig,line,**xargs):
 	return parse_lim(curfig,line,_axmarker='x',**xargs)
@@ -78,8 +91,8 @@ def parse_figure(curfig,line,**xargs):
 	if curfig.cntr:
 		xargs['figlist'].append(curfig)
 	#
-	# return a new S2G figure + rest of line
-	return S2GFIG(fn,xargs['no_tex']),sub(regex,'',line)
+	# return a new S2G figure + rest of line, no new stack
+	return S2GFIG(fn,xargs['no_tex']),sub(regex,'',line),''
 # -----------------------------------------------------------------------------
 def parse_legend(curfig,line,**xargs):
 	# legend as stack
@@ -102,7 +115,77 @@ def parse_legend(curfig,line,**xargs):
 				curfig.legend += 'text "%s" %s\n'%(leg_i_str,curfig.lstyles[leg_c])
 				leg_c         += 1
 			except IndexError, e:
-				print '\nerror::S2G:: too many legends, did you forget a HOLD?\n'
+				raise S2GSyntaxError(line,'<::found too many legends, did you forget a HOLD?::>')
+# -----------------------------------------------------------------------------
+def parse_set(curfig,line,**xargs):
+	#
+	# syntax: 	set(gca, ...)
+	#	 		set(gcf, ...)
+	args = s2gf.get_fargs(line)
+	obj  = s2gf.getnextarg(args)
+	# AXIS
+	if obj == 'gca':
+		while args:
+			arg = s2gf.getnextarg(args)
+			if match(r'[xy]tick$',arg):
+				ticks = args.pop(0)
+				#!<DEV:EXPR>
+				nc = ticks.count(':')
+				if nc==1: # format a:b
+					f,l = match(r'\[?\s*(.+)\s*:\s*(.+)\s*\]?',ticks).group(1,2)
+					num = int(floor(float(l)-float(f))+1)
+					curfig.axopt+='%saxis ftick %s dticks 1 nticks %i\n'%(arg[0],f,num)
+				elif nc==2: # format a:b:c
+					f,d,l = match(r'\[?\s*(.+?)\s*:\s*(.+?)\s*:\s*(.+?)\s*\]?',ticks).group(1,2,3)
+					num   = int(floor((float(l)-float(f))/float(d)+1))
+					curfig.axopt+='%saxis ftick %s dticks %s nticks %i\n'%(arg[0],f,d,num)
+				else: # a or [a b c]
+					ticks = s2gf.strip_d(ticks,r'\[|\]')
+					ticks = sub(',',' ',ticks)
+					curfig.axopt+='%splaces %s\n'%(arg[0],ticks)
+			elif match(r'[xy]ticklabel$',arg):
+				labels = s2gf.strip_d(args.pop(0),r'\[|\]')
+				labels = sub(r'\'','"',labels)
+				labels = sub(',',' ',labels)
+				if xargs['no_tex']:
+					curfig.axopt+='%snames %s\n'%(arg[0],sub(r'\\','/',labels))
+				else:
+					curfig.axopt+='%snames %s\n'%(arg[0],sub('%','\%',labels))
+			elif match(r'[xy]scale$',arg):
+				scale = args.pop(0)
+				curfig.axopt+='%saxis log\n'%arg[0]
+			elif match(r'[xy]lim$',arg):
+				al  = args.pop(0)
+ 				al_ = s2gf.array_x(al)
+ 				curfig.axopt+='%saxis min %s max %s\n'%(arg[0],al_[0],al_[1])
+ 			elif match(r'fontsize',arg):
+ 				fs  = args.pop(0)
+ 				curfig.figoptfs = 'set hei %f'%(float(fs)/28.35/2.) # psp to cm
+ 	# FIGURE
+	elif obj == 'gcf':
+		while args:
+			#!<DEV>
+			pass
+	else:
+		raise S2GSyntaxError(line,'<::unknown object handle in SET::>')
+	#
+	# no new fig, no rest of line, no new stack
+	return 0, '',''
+# -----------------------------------------------------------------------------
+def parse_axis(curfig,line,**xargs):
+	args = s2gf.get_fargs(line)
+	if args:
+		#!<DEV:EXPR>
+		al = s2gf.array_x(s2gf.getnextarg(args))
+		block = 'xaxis min %s max %s\n'%(tuple(al[:2]))
+		block+= 'yaxis min %s max %s\n'%(tuple(al[2:]))
+		curfig.axopt+=block
+	else:
+		#!<DEV check if axis ij, ...>
+		pass
+	#
+	# no new fig, no rest of line, no new stack
+	return 0, '',''
 # -----------------------------------------------------------------------------
 def parse_plot(curfig,line,**xargs):
 	# increment plot counter if figure held or if was 0
@@ -173,10 +256,12 @@ def parse_plot(curfig,line,**xargs):
 		elif opt == 'color':
 			opt_style['color'],foo,optsraw = s2gf.get_color(optsraw)
 		elif opt in ['linewidth','lwidth']:
+			#!<DEV:EXPR>
 			opt = s2gf.getnextarg(optsraw)
 			# black magic...
 			opt_style['lwidth'] = str(round(((float(opt)/3)**.7)/10,2))
 		elif opt in ['markersize','msize']:
+			#!<DEV:EXPR>
 			opt = s2gf.getnextarg(optsraw)
 			# black magic...
 			opt_style['msize'] = str(round(((float(opt)/5)**.5)/5,2))
@@ -224,8 +309,8 @@ def parse_plot(curfig,line,**xargs):
 	lstyle = ' '+line+' '+marker+' '+color+' '
 	curfig.lstyles.append(lstyle)
 	#
-	# no newfig, no rest of line
-	return 0,''
+	# no newfig, no rest of line, no new stack
+	return 0,'',''
 # -----------------------------------------------------------------------------
 def parse_stem(curfig,line,**xargs):
 	return parse_plot(curfig,line,stem=True,**xargs)
@@ -350,8 +435,8 @@ def parse_histogram(curfig,line,**xargs):
 	# > flags
 	curfig.trsp = curfig.trsp or opt_comp['alpha']
 	#
-	# no newfig, no rest of line
-	return 0,''
+	# no newfig, no rest of line, no new stack
+	return 0,'',''
 # -----------------------------------------------------------------------------
 def parse_fill(curfig,line,**xargs):
 	#
@@ -421,6 +506,6 @@ def parse_fillbetween(curfig,line,**xargs):
 	# > flags
 	curfig.trsp = curfig.trsp or opt_comp['alpha']
 	#
-	# no newfig, no rest of line
-	return 0,''
+	# no newfig, no rest of line, no new stack
+	return 0,'',''
 # -----------------------------------------------------------------------------

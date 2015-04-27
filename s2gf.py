@@ -108,6 +108,7 @@ def array_x(s):
 # 	(internal) read a 'color' option and
 #	return something in GLE format
 def get_color(optstack):
+	#!<DEV:EXPR>
 	opt   = getnextarg(optstack)
 	color = ''
 	a     = 0

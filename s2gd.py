@@ -10,25 +10,6 @@ tind  = '.__' # temporary file indicator
 # start of line markers
 # > can appear but line won't be considered
 ignored = r'|'.join([r'^\s*home',r'^\s*clear',r'^\s*close'])
-# > can appear and will trigger something
-markers = r'|'.join([ 	
-	'figure',
-	'plot',
-	'fill',
-	'fillbetween',			# extra syntax
-	'hist','histogram',
-	'bar',
-	'hold',
-	r'[xy]lim',
-	r'[xy]label',
-	'title',
-	r'[xy]?axis',
-	'set',
-	'legend',
-	r'semilog[xy]',
-	'loglog',
-	'stem',
-	r'(#j2g:)'])
 #
 # definition of script dictionary in different languages
 #
