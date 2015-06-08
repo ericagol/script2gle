@@ -8,7 +8,7 @@ import s2gd
 # SUPPORT FUNCTIONS
 #
 addscrvar   = lambda name,expr: '%s=%s%s\n'%(name,expr,s2gd.csd['EOL'])
-addscrwrite = lambda vn,dfn:    '%s%s\n'%(s2gd.csd['writevar'].format(dfn,vn),s2gd.csd['EOL']) 
+addscrwrite = lambda vn,dfn:    '%s%s\n'%(s2gd.csd['writevar'].format(dfn,vn),s2gd.csd['EOL'])
 checkfig  	= lambda cf: 		 cf.fignum+1*(cf.cntr>0)
 checkplot   = lambda cf: 		 1 if (cf.flags['holdon'] or not cf.cntr) else 0
 printdict   = lambda d: 		 ''.join([' %s %s'%v if v[1] else '' for v in d.items()])+'\n'
@@ -16,7 +16,7 @@ printdict   = lambda d: 		 ''.join([' %s %s'%v if v[1] else '' for v in d.items(
 # PARSE FUNCTIONS
 #
 # >> return syntax is: return NEWFIG, NEWLINE, SCRIPT STACK
-# where 
+# where
 #	 > NEWFIG is a new S2GFIG if needed, 0 otherwise,
 #	 > NEWLINE is the rest of line, '' if ignored,
 #	 > SCRIPTSTACK is the new rest of stack (cf append), '' def.
@@ -43,7 +43,7 @@ def parse_hold(curfig,line,**xargs):
 	return 0,sub(regex,'',line),''
 # -----------------------------------------------------------------------------
 def parse_label(curfig,line,**xargs):
-	# 
+	#
 	args = s2gf.get_fargs(line)
 	al   = args.pop(0)
 	m0   = xargs['_labmarker']
@@ -86,7 +86,7 @@ def parse_ylim(curfig,line,**xargs):
 def parse_figure(curfig,line,**xargs):
 	# increment fig counter if needed
 	fn = checkfig(curfig)
-	# 
+	#
 	regex = r'\s*figure\s*?;?'
 	#
 	if curfig.cntr:
@@ -197,15 +197,15 @@ def parse_plot(curfig,line,**xargs):
 	args = s2gf.get_fargs(line)
 	x    = args[0]
 	idx  = 1
-	if len(args)>1: 
+	if len(args)>1:
 		# plot(x,...)
-		if args[1].strip()[0] == "'": 
+		if args[1].strip()[0] == "'":
 			# plot(x, '...')
 			y,optsraw = '', args[1:]
-		else: 
+		else:
 			# plot(x,y,...)
 			y,optsraw = args[1], '' if len(args)<3 else args[2:]
-	else: 
+	else:
 		# plot(x)
 		y,optsraw = '', ''
 	#
@@ -226,35 +226,8 @@ def parse_plot(curfig,line,**xargs):
 		# QUICK SYNTAX (eg '-ro')
 		re_lstyle = r'^(?![ml0-9])([-:]?)([-\.]?)([\+o\*\.xs\^]?)([rgbcmykw]?)'
 		ma_lstyle = match(re_lstyle,opt)
-		if ma_lstyle:
-			opt_style['lstyle'] = '' # in case only marker
-			l_1,l_2,l_3,l_4 = ma_lstyle.group(1,2,3,4)
-			# line (continuous, dashed, ...)
-			if   match(r':', l_1):
-				opt_style['lstyle'] = '2' 	# dotted
-			elif match(r'-', l_1) and match(r'\.',l_2):
-			 	opt_style['lstyle'] = '6'	# dashed-dotted
-			elif match(r'-', l_1) and match(r'-', l_2):
-			 	opt_style['lstyle'] = '3'	# dashed
-			elif match(r'-', l_1):
-				opt_style['lstyle'] = '0'	# standard
-			# marker
-			if   match(r'\+',l_3): 	
-				opt_style['marker'] = 'plus'
-			elif match(r'o', l_3):	
-				opt_style['marker'] = 'circle'
-			elif match(r'\*',l_3): 	
-				opt_style['marker'] = 'star'
-			elif match(r'x', l_3):	
-				opt_style['marker'] = 'cross'
-			elif match(r's', l_3):	
-				opt_style['marker'] = 'square'
-			elif match(r'\^',l_3):	
-				opt_style['marker'] = 'triangle'
-			# color
-			opt_style['color'] = s2gd.md.get(l_4,'darkblue')
 		#
-		elif opt == 'color':
+		if opt == 'color':
 			opt_style['color'],foo,optsraw = s2gf.get_color(optsraw)
 		elif opt in ['linewidth','lwidth']:
 			#!<DEV:EXPR>
@@ -269,10 +242,39 @@ def parse_plot(curfig,line,**xargs):
 		elif opt in ['markerfacecolor','mfcol']:
 			opt = s2gf.getnextarg(optsraw) # will not be considered
 			cm  = opt_style['marker']
-			cm2 = 'f' if cm in ['circle','triangle','square'] else ''  
+			cm2 = 'f' if cm in ['circle','triangle','square'] else ''
 			opt_style['marker'] = cm2+cm
+		# keep this quick option last since match matches almost anything
+		elif ma_lstyle:
+			opt_style['lstyle'] = '' # in case only marker
+			l_1,l_2,l_3,l_4 = ma_lstyle.group(1,2,3,4)
+			# line (continuous, dashed, ...)
+			if   match(r':', l_1):
+				opt_style['lstyle'] = '2' 	# dotted
+			elif match(r'-', l_1) and match(r'\.',l_2):
+			 	opt_style['lstyle'] = '6'	# dashed-dotted
+			elif match(r'-', l_1) and match(r'-', l_2):
+			 	opt_style['lstyle'] = '3'	# dashed
+			elif match(r'-', l_1):
+				opt_style['lstyle'] = '0'	# standard
+			# marker
+			if   match(r'\+',l_3):
+				opt_style['marker'] = 'plus'
+			elif match(r'o', l_3):
+				opt_style['marker'] = 'circle'
+			elif match(r'\*',l_3):
+				opt_style['marker'] = 'star'
+			elif match(r'x', l_3):
+				opt_style['marker'] = 'cross'
+			elif match(r's', l_3):
+				opt_style['marker'] = 'square'
+			elif match(r'\^',l_3):
+				opt_style['marker'] = 'triangle'
+			# color
+			opt_style['color'] = s2gd.md.get(l_4,'darkblue')
+		#
 		else:
-			raise S2GSyntaxError(line,'<::unknown option in plot::>')			
+			raise S2GSyntaxError(line,'<::unknown option in plot::>')
 	#
 	# name of data file
 	dfn = '%sdatplot%i_%i.dat'%(s2gd.tind,curfig.fignum,curfig.cntr)
@@ -284,7 +286,7 @@ def parse_plot(curfig,line,**xargs):
 		script += addscrvar('y__',y)
 	else:
 		script += addscrvar('y__',x)
-		script += addscrvar('x__',s2gd.csd['span']%s2gd.csd['numel']%'y__')	
+		script += addscrvar('x__',s2gd.csd['span']%s2gd.csd['numel']%'y__')
 	vx,vy   = s2gd.csd['vec']%'x__', s2gd.csd['vec']%'y__'
 	script += addscrvar('c__',s2gd.csd['cbind']([vx,vy]))
 	script += addscrwrite('c__',dfn)
@@ -338,7 +340,7 @@ def parse_histogram(curfig,line,**xargs):
 	optsraw = '' if len(args)<2 else args[1:]
 	# treat options
 	# > default dictionaries
-	opt_style = { 
+	opt_style = {
 		'color'	: 'white',		# default edge color
 		'fill'	: 'salmon', 	# default face color
 	}
@@ -378,7 +380,7 @@ def parse_histogram(curfig,line,**xargs):
 		elif opt == 'nbins':
 			nbins = s2gf.getnextargNL(nbins)
 		else:
-			raise S2GSyntaxError(line,'<::unknown option in hist::>')			
+			raise S2GSyntaxError(line,'<::unknown option in hist::>')
 	#
 	# name of data files
 	dfn     = '%sdathist%i_%i.dat'%(s2gd.tind,curfig.fignum,curfig.cntr)
@@ -479,7 +481,7 @@ def parse_fillbetween(curfig,line,**xargs):
 	optsraw = '' if len(args)<4 else args[3:]
 	# treat options
 	# > default dictionaries
-	opt_style = { 
+	opt_style = {
 		'color'	: 'gray',	# default fill color
 	}
 	opt_comp = {

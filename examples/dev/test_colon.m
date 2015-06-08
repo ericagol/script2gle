@@ -5,6 +5,6 @@ y = [normpdf(x,0,1);
 
 figure
 hold on
-plot(x,y(1,:),'-r')
-plot(x,y(2,:),'-b')
-plot(x,y(3,:),'-c')
+plot(x,y(1,:)*2,'color','CornflowerBlue')
+plot(x,y(2,:)*2,'color','DeepPink')
+plot(x,y(3,:)*2,'-r','linewidth',1.5)

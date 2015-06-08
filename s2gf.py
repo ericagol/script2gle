@@ -53,6 +53,7 @@ def get_fargs(l):
 			if not cur_stack:
 				raise s2gc.S2GSyntaxError(l,'<::misplaced comma::>')
 		elif cur_char == ')':
+			arg_list.append(cur_arg)
 			break
 		else:
 			cur_arg   += cur_char
