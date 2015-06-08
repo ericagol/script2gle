@@ -14,3 +14,5 @@ hist(draw2,'normalization','pdf',...
 plot(x,y,'-b','linewidth',0.5)
 xlabel('$x$')
 ylabel('$y=\mathcal N(x;1,5)$')
+
+legend('leg1','leg2','leg3')

@@ -1,10 +1,9 @@
-from s2gc import *
 from re import search, sub, match
 from math import floor
-
+#
+import s2gc
 import s2gf
-from s2ge import *
-
+import s2gd
 #
 # SUPPORT FUNCTIONS
 #
@@ -17,13 +16,10 @@ printdict   = lambda d: 		 ''.join([' %s %s'%v if v[1] else '' for v in d.items(
 # PARSE FUNCTIONS
 #
 # >> return syntax is: return NEWFIG, NEWLINE, SCRIPT STACK
-#
 # where 
-#	 > NEWFIG is 0 if no new fig needs to be created, 
-#			  a new S2GFIG otherwise,
-#	 > NEWLINE is the rest of the line to be treated,
-#			  (usually just an empty string)	
-
+#	 > NEWFIG is a new S2GFIG if needed, 0 otherwise,
+#	 > NEWLINE is the rest of line, '' if ignored,
+#	 > SCRIPTSTACK is the new rest of stack (cf append), '' def.
 # -----------------------------------------------------------------------------
 def parse_append(curfig,line,**xargs):
 	scriptname = s2gf.strip_d(s2gf.getarg1(line),'\"')
@@ -47,13 +43,18 @@ def parse_hold(curfig,line,**xargs):
 	return 0,sub(regex,'',line),''
 # -----------------------------------------------------------------------------
 def parse_label(curfig,line,**xargs):
-	# could treat fontsize here
-	al = s2gf.getarg1(line)
-	m0 = xargs['_labmarker']
+	# 
+	args = s2gf.get_fargs(line)
+	al   = args.pop(0)
+	m0   = xargs['_labmarker']
 	if xargs['no_tex']:
 		curfig.axopt += '%stitle "%s"\n'%(m0,sub(r'\\','/',al))
 	else:
 		curfig.axopt += '%stitle "\\tex{%s}"\n'%(m0,sub('%','\%',al))
+	while args:
+		arg = s2gf.getnextarg(args)
+		if match(r'fontsize$',arg):
+			fsize = s2gf.safe_pop(args,arg)
 	#
 	# no new fig, no rest of line, no new stack
 	return 0,'',''
@@ -92,7 +93,7 @@ def parse_figure(curfig,line,**xargs):
 		xargs['figlist'].append(curfig)
 	#
 	# return a new S2G figure + rest of line, no new stack
-	return S2GFIG(fn,xargs['no_tex']),sub(regex,'',line),''
+	return s2gc.S2GFIG(fn,xargs['no_tex']),sub(regex,'',line),''
 # -----------------------------------------------------------------------------
 def parse_legend(curfig,line,**xargs):
 	# legend as stack
@@ -109,13 +110,13 @@ def parse_legend(curfig,line,**xargs):
 			leg_off       = s2gf.array_x(leg_stack.pop(0))
 			curfig.legoff = ' offset '+' '.join(leg_off)
 		else:
-			if no_tex: leg_i_str = sub(r'\\','/',leg_i_str)
+			if xargs['no_tex']: leg_i_str = sub(r'\\','/',leg_i_str)
 			#
 			try:
 				curfig.legend += 'text "%s" %s\n'%(leg_i_str,curfig.lstyles[leg_c])
 				leg_c         += 1
 			except IndexError, e:
-				raise S2GSyntaxError(line,'<::found too many legends, did you forget a HOLD?::>')
+				raise s2gc.S2GSyntaxError(line,'<::found too many legends, did you forget a HOLD?::>')
 # -----------------------------------------------------------------------------
 def parse_set(curfig,line,**xargs):
 	#
@@ -128,7 +129,7 @@ def parse_set(curfig,line,**xargs):
 		while args:
 			arg = s2gf.getnextarg(args)
 			if match(r'[xy]tick$',arg):
-				ticks = args.pop(0)
+				ticks = s2gf.safe_pop(args,arg)
 				#!<DEV:EXPR>
 				nc = ticks.count(':')
 				if nc==1: # format a:b
@@ -144,7 +145,8 @@ def parse_set(curfig,line,**xargs):
 					ticks = sub(',',' ',ticks)
 					curfig.axopt+='%splaces %s\n'%(arg[0],ticks)
 			elif match(r'[xy]ticklabel$',arg):
-				labels = s2gf.strip_d(args.pop(0),r'\[|\]')
+				raw    = s2gf.safe_pop(args,arg)
+				labels = s2gf.strip_d(raw,r'\[|\]')
 				labels = sub(r'\'','"',labels)
 				labels = sub(',',' ',labels)
 				if xargs['no_tex']:
@@ -152,14 +154,13 @@ def parse_set(curfig,line,**xargs):
 				else:
 					curfig.axopt+='%snames %s\n'%(arg[0],sub('%','\%',labels))
 			elif match(r'[xy]scale$',arg):
-				scale = args.pop(0)
+				scale = s2gf.safe_pop(args,arg)
 				curfig.axopt+='%saxis log\n'%arg[0]
 			elif match(r'[xy]lim$',arg):
-				al  = args.pop(0)
- 				al_ = s2gf.array_x(al)
+				al  = s2gf.safe_pop(args,arg)
  				curfig.axopt+='%saxis min %s max %s\n'%(arg[0],al_[0],al_[1])
- 			elif match(r'fontsize',arg):
- 				fs  = args.pop(0)
+ 			elif match(r'fontsize$',arg):
+ 				fs  = s2gf.safe_pop(args,arg)
  				curfig.figoptfs = 'set hei %f'%(float(fs)/28.35/2.) # psp to cm
  	# FIGURE
 	elif obj == 'gcf':
@@ -167,7 +168,7 @@ def parse_set(curfig,line,**xargs):
 			#!<DEV>
 			pass
 	else:
-		raise S2GSyntaxError(line,'<::unknown object handle in SET::>')
+		raise s2gc.S2GSyntaxError(line,'<::unknown object handle in SET::>')
 	#
 	# no new fig, no rest of line, no new stack
 	return 0, '',''
@@ -285,7 +286,7 @@ def parse_plot(curfig,line,**xargs):
 		script += addscrvar('y__',x)
 		script += addscrvar('x__',s2gd.csd['span']%s2gd.csd['numel']%'y__')	
 	vx,vy   = s2gd.csd['vec']%'x__', s2gd.csd['vec']%'y__'
-	script += addscrvar('c__',s2gd.csd['cbind']%(vx,vy))
+	script += addscrvar('c__',s2gd.csd['cbind']([vx,vy]))
 	script += addscrwrite('c__',dfn)
 	# > write script
 	xargs['script'].write(script)
@@ -399,7 +400,7 @@ def parse_histogram(curfig,line,**xargs):
 	if nbins:	 	 	 script += addscrvar('nbins__',nbins)
 	else:			 	 script += addscrvar('nbins__',s2gd.csd['autobins'].format(s2gd.csd['lenvec']%'xv__'))
 	# > write support information (MATCH ORDER WITH LINES BELOW)
-	script += addscrvar('c2__',s2gd.csd['rbind2'](
+	script += addscrvar('c2__',s2gd.csd['rbind'](
 					[
 						'xmin__', # 1
 						'xmax__', # 2
@@ -434,6 +435,20 @@ def parse_histogram(curfig,line,**xargs):
 	curfig.plot += printdict(opt_style)
 	# > flags
 	curfig.trsp = curfig.trsp or opt_comp['alpha']
+	#
+	# no newfig, no rest of line, no new stack
+	return 0,'',''
+# -----------------------------------------------------------------------------
+def parse_bar(curfig,line,**xargs):
+	# increment plot counter if figure held or if 0
+	curfig.cntr += checkplot(curfig)
+	#
+	# syntax: 	bar(x,...)
+	#			bar(x,y,...)
+	args = s2gf.get_fargs(line)
+	#
+	# DEV DEV DEV DEV
+	# DEV DEV DEV DEV
 	#
 	# no newfig, no rest of line, no new stack
 	return 0,'',''
@@ -492,7 +507,7 @@ def parse_fillbetween(curfig,line,**xargs):
 	# > col vectors
 	vx,vy1,vy2 = [s2gd.csd['vec']%e for e in ['x__','y1__','y2__']]
 	# > cbind col vectors
-	script += addscrvar('c__', s2gd.csd['cbind2']([vx, vy1, vy2]))
+	script += addscrvar('c__', s2gd.csd['cbind']([vx, vy1, vy2]))
 	# > write vars
 	script += addscrwrite('c__',dfn)
 	# > write script

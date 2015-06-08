@@ -42,7 +42,6 @@ if len(argv)>2:
 			print 'Ignoring unrecognized arg.: <'+arg+'>'
 #
 # -----------------------------------------------------------------------------
-# -----------------------------------------------------------------------------
 #
 rname  	   = argv[1]
 fname,fext = splitext(rname)    # full name with directory + file extension
@@ -65,39 +64,10 @@ elif fext == '.m':
 		s2gd.csd['caller'] = 'matlab -nodesktop -nosplash -noFigureWindows -r'
 #
 s2gd.ignored+= r'|^\s*%s'%s2gd.csd['comment']
-#s2gd.markers = r'|'.join([s2gd.markers,s2gd.csd['append']])
 #
-# TEMP TEMP TEMP
-markers_dict = {
-	'figure' 			: s2gap.parse_figure,
-	'plot'	 			: s2gap.parse_plot,
-	'fill'	 			: s2gap.parse_fill,
-	'fillbetween'		: s2gap.parse_fillbetween,	# extra syntax
-	'hist'				: s2gap.parse_histogram,
-	'histogram'			: s2gap.parse_histogram,
-	'hold'				: s2gap.parse_hold,
-	'xlim'				: s2gap.parse_xlim,
-	'ylim'				: s2gap.parse_ylim,
-	'xlabel'			: s2gap.parse_xlabel,
-	'ylabel'			: s2gap.parse_ylabel,
-	'title'				: s2gap.parse_title,
-	'semilogx'			: s2gap.parse_semilogx,
-	'semilogy'			: s2gap.parse_semilogy,
-	'loglog'			: s2gap.parse_loglog,
-	'stem'				: s2gap.parse_stem,
-	'set'				: s2gap.parse_set,
-	'axis'				: s2gap.parse_axis,
-	'legend'			: s2gap.parse_legend,
-	s2gd.csd['append'] 	: s2gap.parse_append,
-#	'bar'				: s2gap.parse_bar,
-#	r'(#s2g:)'		: s2gap.parse_s2g,
-	}
+markers_dict = s2gd.markers_dict
+markers_dict[s2gd.csd['append']] = s2gap.parse_append
 allmarkers = [m[0] for m in markers_dict.items()]
-#
-# TEMP TEMP
-def donothing(cf,l,**xa):
-	return 0,l
-# TEMP TEMP TEMP
 #
 # == MAIN BLOCK =================
 # create temp matlab file which
@@ -130,37 +100,31 @@ with open(rname,'r') as sf_orig:
 				sf_tmp.write(l)
 				continue
 			#
-			# PARSE LINE AFTER MARKER (call appropriate s2gap function)
-			cf,l,ss = markers_dict.setdefault(marker,donothing)(
-						curfig,l,
-						figlist=figlist,no_tex=no_tex,script=sf_tmp,
-						scriptstack=script_stack)
+			# parse line after marker (call appropriate s2gap function)
+			cf,l,ss = markers_dict[marker](
+						curfig,l,figlist=figlist,no_tex=no_tex,
+						script=sf_tmp,scriptstack=script_stack)
 			if cf: curfig = cf
 			if ss: script_stack = ss		
 		# --------------------------------
-		# if figure remains -> append it
+		# if there remains a figure -> append it
 		if curfig.cntr:
 			figlist.append(curfig)
 		#
 		sf_tmp.write('\n%s\n'%s2gd.csd['exit'])
-
-# = # = # = # = # = # = # = # = # = # = # = # = # = # = # = # = #
-# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# = # = # = # = # = # = # = # = # = # = # = # = # = # = # = # = #
-
-###########################
-# COMPILATION #############
-###########################
-# RUN SCRIPT
+#
+# -----------------------------------------------------------------------------
+# COMPILATION
+# > run script (matlab,octave,julia,...)
 try:
 	start = time()
 	check_call('%s %s%s'%(s2gd.csd['caller'],s_tmp,fext),shell=True)
 	delta = time()-start
-	print 'Calling+executing script :: ',delta
+	print 'Calling script :: ',delta
 except Exception, e:
 	print e
-
-# (GLE) compile figs
+#
+# > (GLE) compile figs
 if not no_gleplot:
 	start = time()
 	if png_out:
@@ -174,8 +138,8 @@ if not no_gleplot:
 else: # just copy gle files
 	for f in figlist:
 		f.writefile()
-
-# CLEANUP
+#
+# > cleanup temporary files
 files = listdir('.')
 for f in files:
 	if f.startswith(s2gd.tind):

@@ -1,3 +1,5 @@
+import s2gap
+#
 # SHARED VARIABLES
 #
 csd   = {} 	# current script dictionary, this is set by S2G
@@ -10,6 +12,31 @@ tind  = '.__' # temporary file indicator
 # start of line markers
 # > can appear but line won't be considered
 ignored = r'|'.join([r'^\s*home',r'^\s*clear',r'^\s*close'])
+#
+# definition of actions
+markers_dict = {
+	'figure' 			: s2gap.parse_figure,
+	'plot'	 			: s2gap.parse_plot,
+	'fill'	 			: s2gap.parse_fill,
+	'fillbetween'		: s2gap.parse_fillbetween,	# extra syntax
+	'hist'				: s2gap.parse_histogram,
+	'histogram'			: s2gap.parse_histogram,
+	'hold'				: s2gap.parse_hold,
+	'xlim'				: s2gap.parse_xlim,
+	'ylim'				: s2gap.parse_ylim,
+	'xlabel'			: s2gap.parse_xlabel,
+	'ylabel'			: s2gap.parse_ylabel,
+	'title'				: s2gap.parse_title,
+	'semilogx'			: s2gap.parse_semilogx,
+	'semilogy'			: s2gap.parse_semilogy,
+	'loglog'			: s2gap.parse_loglog,
+	'stem'				: s2gap.parse_stem,
+	'set'				: s2gap.parse_set,
+	'axis'				: s2gap.parse_axis,
+	'legend'			: s2gap.parse_legend,
+#	'bar'				: s2gap.parse_bar,
+#	r'(#s2g:)'		: s2gap.parse_s2g,
+	}
 #
 # definition of script dictionary in different languages
 #
@@ -27,10 +54,8 @@ script_dict_JL = {
 	'tifrow' 	: 'ifelse(size({0},1)>1,{0},{0}\')',
 	'autobins'  : '({0}<10)*{0}+(10<={0}<30)*10+(30<={0})*int(round(sqrt({0})))',
 	'EOL'		: '',
-	'cbind' 	: '[%s %s]',
-	'cbind2' 	: lambda s: '[%s]'%(','.join(s)),
-	'rbind'		: '[%s;%s]',
-	'rbind2'	: lambda s: '[%s]'%(';'.join(s)),
+	'cbind' 	: lambda s: '[%s]'%(','.join(s)),
+	'rbind'		: lambda s: '[%s]'%(';'.join(s)),
 	'span' 		: '1:%s',
 	'exit' 		: 'exit()',
 	'comment' 	: '\#',
@@ -50,10 +75,8 @@ script_dict_R = {
 	'tifrow' 	: 'if(nrow{0}>1){{0}}else{t({0})}',
 	'autobins'  : '({0}<10)*{0}+(10<={0} && {0}<30)*10+(30<={0})*round(sqrt({0}))',
 	'EOL'		: '',
-	'cbind' 	: 'cbind(%s,%s)',
-	'cbind2'	: lambda s: 'cbind(%s)'%(','.join(s)),
-	'rbind'		: 'rbind(%s,%s)',
-	'rbind2'	: lambda s: 'rbind(%s)'%(','.join(s)),
+	'cbind'		: lambda s: 'cbind(%s)'%(','.join(s)),
+	'rbind'		: lambda s: 'rbind(%s)'%(','.join(s)),
 	'span' 		: '1:%s',
 	'exit'		: 'q()',
 	'comment'	: '\#',
@@ -73,10 +96,8 @@ script_dict_M = {
 	'tifrow' 	: 'reshape({0}, (size({0},1)>1)*size({0},1)+(size({0},1)==1)*size({0},2), (size({0},1)>1)*size({0},2)+(size({0},1)==1)*size({0},1))',
 	'autobins'	: '({0}<10)*{0}+(10<={0} && {0}<30)*10+(30<={0})*round(sqrt({0}))',
 	'EOL'		: ';',
-	'cbind'		: '[%s %s]',
-	'cbind2' 	: lambda s: '[%s]'%(','.join(s)),
-	'rbind'		: '[%s;%s]',
-	'rbind2'	: lambda s: '[%s]'%(';'.join(s)),
+	'cbind' 	: lambda s: '[%s]'%(','.join(s)),
+	'rbind'		: lambda s: '[%s]'%(';'.join(s)),
 	'span'		: '1:%s',
 	'exit'		: 'exit()',
 	'comment' 	: '\%',

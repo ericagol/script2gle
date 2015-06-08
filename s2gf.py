@@ -1,9 +1,7 @@
-#!/usr/bin/env python
-# coding=utf-8
-#
 from re import search, sub, match
 from os.path import join
-from s2ge import *
+#
+import s2gc
 import s2gd
 #
 ###########################
@@ -26,47 +24,70 @@ getnextargNL = lambda lst: lst.pop(0).strip('\'')
 # FUNCTIONS ###############
 ###########################
 #
-# +++++++++++++++++++++++++++++++++++++++++
-# GET FARGS :
-#	get arguments of function str
-#
-#	<in>:	string like plot(x,y,'linewidth',2.0)
-# 	<out>:	list of arguments ['x','y','linewidth','2.0']
-def get_fargs(line):
-	# get core
- 	stack = search(
- 				r'^\s*(?:\w+)\(\s*'					 # match "marker("
- 				r'(.*?)'							 # all arguments
- 				r'(?:\)\s*;?\s*)'					 # end bracket
-				r'((?:%s).*)?$'%s2gd.csd['comment'], # and rest of line (possible comm)
-				line).group(1)
- 	#
- 	# browse the chars in arglst, separate with commas
- 	# but not when within expression such as 
- 	# '..,..' or "..,.." or [..,..] etc.
- 	#
- 	arglst = []
-	while stack:
-		stack  = stack.strip()
-		curidx = 0
-		maxidx = len(stack)
-		curarg = ''
-		key    = stack[0]
-		isopen = key in s2gd.keyopen 		# ', ", [, (, {
-		while curidx<maxidx-1 and isopen:
-			curchar = stack[curidx]
-			curarg += curchar
-			curidx += 1
-			nxtchar = stack[curidx]
-			isopen  = not(nxtchar==s2gd.keyclose[key])
-		while curidx<maxidx and not(stack[curidx]==','):
-			curarg += stack[curidx]
-			curidx += 1
-		stack = stack[curidx+1:]
-		arglst.append(curarg)
-		curarg = ''
+# # +++++++++++++++++++++++++++++++++++++++++
+# # GET FARGS :
+# #	get arguments of function str
+# #
+# #	<in>:	string like plot(x,y,'linewidth',2.0)
+# # 	<out>:	list of arguments ['x','y','linewidth','2.0']
+def get_fargs(l):
+	cur_stack,arg_list,cur_arg = search(r'^\s*(?:\w+)\(\s*(.*)',l).group(1),[],''
 	#
- 	return arglst
+	while cur_stack:
+		cur_char = cur_stack[0]
+		#
+		is_open  = cur_char in s2gd.keyopen
+		if is_open:
+			cur_arg 	    += cur_char
+			closed_s,rest,f  = find_delim(cur_stack[1:],cur_char,s2gd.keyclose[cur_char])
+			if f: raise s2gc.S2GSyntaxError(l,'<::found %s but could not close it::>'%cur_char)
+			cur_arg	        += closed_s+s2gd.keyclose[cur_char]
+			cur_stack 	     = rest
+			continue
+		#
+		# out of isopen
+		if cur_char == ',': # splitting comma
+			arg_list.append(cur_arg)
+			cur_arg   = ''
+			cur_stack = cur_stack[1:]
+			if not cur_stack:
+				raise s2gc.S2GSyntaxError(l,'<::misplaced comma::>')
+		elif cur_char == ')':
+			break
+		else:
+			cur_arg   += cur_char
+			cur_stack  = cur_stack[1:] # can throw syntax error (no end parens)
+	#
+	return arg_list
+#
+# Side function
+def find_delim(s,d_open,d_close):
+	cur_idx 	= 0
+	inside_open = 1
+	cur_string  = ''
+	while cur_idx < len(s):
+		cur_char = s[cur_idx]
+		#
+		cur_idx += 1
+		#
+		if 		 cur_char == d_close: inside_open -= 1
+		elif 	 cur_char == d_open:  inside_open += 1
+		#
+		if not inside_open: break
+		else:
+			cur_string += cur_char
+	#
+	return cur_string,'' if cur_idx==len(s) else s[cur_idx:],inside_open
+#
+# +++++++++++++++++++++++++++++++++++++++++++
+# SAFE_POP
+#	tries to pop list, if error, return clarifying
+# 	message
+def safe_pop(lst,lbl=''):
+	try:
+		return lst.pop(0)
+	except IndexError,e:
+		raise s2gc.S2GSyntaxError(line,'<::found %s but no value(s)?::>'%lbl)
 #
 # +++++++++++++++++++++++++++++++++++++++++++
 # ARRAY X
@@ -154,205 +175,5 @@ def close_ellipsis(l,script_stack):
 				line_open = False
 				l+=lt
 		if line_open:
-			raise S2GSyntaxError(l,'<::line not closed::>')
+			raise s2gc.S2GSyntaxError(l,'<::line not closed::>')
 	return l, script_stack
-#
-# +++++++++++++++++++++++++++++++++++++++++++
-# READ PLOT:
-#	read a 'plot(...)' line, extracts script
-#	code to output data, generates GLE bloc
-#	to input in GLE figure
-#
-#	<in>:	line (from core part of script doc)
-#	<out>:	returns line + output line
-def read_plot(line, figc, plotc):
-	plt,tls  = {},{}
-	# default options
-	plt['lwidth'] = ' lwidth 0 '
-	plt['msize']  = ' msize 0.2 '
-	tls['line']   = ''
-	tls['marker'] = ''
-	tls['color']  = ' darkblue '
-	# flags of options done
-	flags = {'lstyle':False,'lwidth':False,'msize':False,'mface':False}
-	# get plot arguments
-	args = get_fargs(line)
-	# ------------------------------------------
-	# SCRIPT -----------------------------------
-	# generate script to output appropriate data
-	sta = 2; # index of args where options start
-	# case one var: plot(x), plot(x,'+r'), ...
-	if len(args)==1 or match(r'^\s*\'',args[1]):
-		script = 'x__ = %s%s\n'%(s2gd.csd['span']%s2gd.csd['numel']%args[0],s2gd.csd['EOL'])
-		script+= 'y__ = %s%s\n'%(args[0],s2gd.csd['EOL'])
-		sta    = 1
-	# case two vars plot(x,y,'+r')
-	else:
-		script = 'x__ = %s%s\n'%(args[0],s2gd.csd['EOL'])
-		script+= 'y__ = %s%s\n'%(args[1],s2gd.csd['EOL'])
-	#
-	vecx   = s2gd.csd['vec']%'x__'
-	vecy   = s2gd.csd['vec']%'y__'
-	script+= 'c__ = %s%s\n'%(s2gd.csd['cbind']%(vecx,vecy),s2gd.csd['EOL'])
-	dfn    = "%sdatplot%i_%i.dat"%(s2gd.tind,figc,plotc)
-	script+= "%s%s\n"%(s2gd.csd['writevar'].format(dfn,'c__'),s2gd.csd['EOL'])
-	#
-	plt['script'] = script
-	# ---------------------------------
-	# GLE -----------------------------
-	# generate gle code to read options
-	if len(args)>sta:
-		optsraw = args[sta:]
-		while optsraw:
-			opt = getnextarg(optsraw)
-			#
-			# LSTYLE
-			#
-			# patterns of the form '-+r'
-			p_lstyle = r'^(?![ml0-9])([-:]?)([-\.]?)([\+o\*\.xs\^]?)([rgbcmykw]?)'
-			lstyle = match(p_lstyle,opt)
-			if lstyle and not flags['lstyle']:
-				flags['lstyle']=True
-				#
-				# line (continuous, dashed, ...)
-				l_1 = lstyle.group(1)
-				l_2 = lstyle.group(2)
-				if   match(r':', l_1): 	tls['line'] = '2' 	# dotted
-				elif match(r'-', l_1) and \
-					 match(r'\.',l_2): 	tls['line'] = '6'	# dashed-dotted
-				elif match(r'-', l_1) and \
-					 match(r'-', l_2): 	tls['line'] = '3'	# dashed
-				elif match(r'-', l_1):	tls['line'] = '0'	# standard
-				#
-				# marker
-				l_3 = lstyle.group(3)
-				if   match(r'\+',l_3): 	tls['marker'] = 'plus'
-				elif match(r'o', l_3):	tls['marker'] = 'circle'
-				elif match(r'\*',l_3): 	tls['marker'] = 'star'
-				elif match(r'x', l_3):	tls['marker'] = 'cross'
-				elif match(r's', l_3):	tls['marker'] = 'square'
-				elif match(r'\^',l_3):	tls['marker'] = 'triangle'
-				#
-				# color
-				l_4 = lstyle.group(4)
-				tls['color'] = s2gd.md.get(l_4,'blue')
-			#
-			# COLOR OPTION (accept x11 names)
-			#
-			elif opt=='color':
-				tls['color'] = getnextarg(optsraw)
-				if tls['color'] in ['r','g','b','c','m','y','k','w']:
-					tls['color'] = s2gd.md[tls['color']]
-			#
-			# LWIDTH OPTION
-			#
-			elif opt=='linewidth' and not flags['lwidth']:
-				flags['lwidth']=True
-				opt = getnextarg(optsraw)
-				lw  = float(opt)
-				lw  = round(((lw/3)**.7)/10,2) # magic...
-				plt['lwidth'] = ' lwidth '+str(lw)+' '
-			#
-			# MSIZE OPTION
-			#
-			elif opt=='markersize' and not flags['msize']:
-				flags['msize']=True
-				opt = getnextarg(optsraw)
-				ms  = float(opt)
-				ms  = round(((ms/5)**.5)/5,2)
-				plt['msize'] = ' msize '+str(ms)+' '
-			#
-			# MFACE OPTION
-			#
-			elif opt=='markerfacecolor' and not flags['mface']:
-				flags['mface']=True
-				optsraw.pop(0) # actually we don't care what color is given (yet)
-	#
-	# if just marker no line, if no marker no line -> lstyle 0
-	lb,mb  = bool(tls['line']),bool(tls['marker'])
-	lbool  = lb or not mb
-	lsty   = tls['line']+'0'*(not lb)
-	line   = ('lstyle '+lsty)*lbool
-	fill   = 'f'*(tls['marker'] in ['circle','square','triangle'])*flags['mface']
-	marker = 'marker '*mb+fill+tls['marker']
-	color  = 'color '+tls['color']
-	plt['lstyle'] = ' '+line+' '+marker+' '+color+' '
-	return plt
-#
-# +++++++++++++++++++++++++++++++++++++++++++
-# READ BAR:
-#	read a 'bar(...)' line, extracts script
-#	code to output data, generates GLE bloc
-#	to input in GLE figure
-#
-#	<in>:	line (from core part of script doc)
-#	<out>:	returns line + output line
-def read_bar(line,figc,plotc):
-	bar = {}
-	# default options
- 	bar['edgecolor'] = 'white'
- 	bar['facecolor'] = 'cornflowerblue'
- 	bar['alpha'] 	 = False
- 	bar['width']	 = 1
- 	bar['xdticks']   = '1'
- 	bar['flticks'] 	 = False
- 	# get plot arguments
- 	args = get_fargs(line)
- 	# ------------------------------------------
- 	# SCRIPT -----------------------------------
- 	# generate script to output appropriate data
- 	# > syntax:
- 	# 	command: bar(x,...)
- 	#	 			...,'Normalization','count|countdensity|probability|pdf|cumcount|cdf'
- 	#				...,'Facecolor',svgcol|matlabcol|rgb|rgba,'Alpha'?,0.8
- 	#				...,'Edgecolor',svgcol|matlabcol|rgb
- 	#
- 	xname  = strip_d(args.pop(0),'\'')
- 	yname  = ''
- 	if args and not (search(r'^\s*\'',args[0]) or args[0].isdigit()):
- 		yname = strip_d(args.pop(0),'\'')
- 	a='1' # alpha
- 	b='1' # alpha for edge (a bit weird but up to the user to decided)
- 	if args:
-	 	optsraw = args
-	 	while optsraw:
-	 		opt = getnextarg(optsraw)
-	 		if opt.isdigit() or opt=='width':
-	 			if opt=='width':
-	 				opt = getnextarg(optsraw)
-	 			bar['width'] = float(opt)
-	 		elif opt=='xdticks':
-	 			opt = getnextarg(optsraw)
-	 			bar['xdticks'] = opt
-	 		elif opt=='flticks':
-	 			bar['flticks'] = True
-	 		elif opt in ['r','g','b','c','m','y','k','w']:
-				bar['facecolor']=s2gd.md[opt]
-			elif opt in ['color','facecolor']:
-				bar['facecolor'],a,optsraw = get_color(optsraw)
-	 		elif opt=='edgecolor':
-	 			bar['edgecolor'],b,optsraw = get_color(optsraw)
-	#
- 	if not (a=='1' or b=='1'): bar['alpha']=True
- 	#
-	script = 'x__  = %s%s\n'%(xname ,s2gd.csd['EOL'])
-	if yname:
-		vecx    = s2gd.csd['vec']%'x__'
-		script += 'y__ = %s%s\n'%(s2gd.csd['asmatrix']%yname,s2gd.csd['EOL'])
-		script += 'y__ = %s%s\n'%(s2gd.csd['tifrow'].format('y__'),s2gd.csd['EOL'])
-		script += 'c__ = %s%s\n'%(s2gd.csd['cbind']%(vecx,'y__'),s2gd.csd['EOL'])
-	else:
-	 	script += 'y__ = %s%s\n'%(s2gd.csd['asmatrix']%'x__',s2gd.csd['EOL'])
-	 	script += 'y__ = %s%s\n'%(s2gd.csd['tifrow'].format('y__'),s2gd.csd['EOL'])
-	 	script += 'lsp = %s%s\n'%(s2gd.csd['span']%s2gd.csd['nrows']%'y__',s2gd.csd['EOL'])
-	 	script += 'c__ = %s%s\n'%(s2gd.csd['cbind']%(s2gd.csd['vec']%'lsp','y__'),s2gd.csd['EOL'])
-	#
- 	script += 'ncols__ = %s%s\n'%(s2gd.csd['ncols']%'y__',s2gd.csd['EOL'])
-	#
-	dfn    = "%sdatbar%i_%i.dat"%(s2gd.tind,figc,plotc)
-  	script+= '%s%s\n'%(s2gd.csd['writevar'].format(dfn,'c__'),s2gd.csd['EOL'])
-  	script+= 'c2__ = %s%s\n'%('ncols__',s2gd.csd['EOL']) 
-  	dfn2   = "%sdatbar%i_%i_side.dat"%(s2gd.tind,figc,plotc)
-  	script+= '%s%s\n'%(s2gd.csd['writevar'].format(dfn2,'c2__'),s2gd.csd['EOL'])
- 	bar['script'] = script
- 	return bar
