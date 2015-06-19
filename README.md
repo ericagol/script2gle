@@ -29,6 +29,8 @@ running with `S2G` (\*) will generate the figure below:
 ![introtest.R](/examples/R/introtest_fig1_g.png)
 (\*:  `s2g introtest.R -png -tex`))
 
+**Note:** if this figure appears slightly pixellated, it is because it was rasterized into PNG so that it could be displayed on this page. To have it in vector quality: `s2g introtest.R -tex`
+
 ### The workflow
 
 The workflow goes as follows ([see also here](#workf_ex)):

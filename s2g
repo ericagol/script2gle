@@ -62,6 +62,7 @@ elif fext == '.m':
 	s2gd.csd = s2gd.script_dict_M	
 	if no_octave:
 		s2gd.csd['caller'] = 'matlab -nodesktop -nosplash -noFigureWindows -r'
+		s2gd.csd['scname'] = 'matlab'
 #
 s2gd.ignored+= r'|^\s*%s'%s2gd.csd['comment']
 #
@@ -70,7 +71,7 @@ markers_dict[s2gd.csd['append']] = s2gap.parse_append
 allmarkers = [m[0] for m in markers_dict.items()]
 #
 # == MAIN BLOCK =================
-# create temp matlab file which
+# create temp script file which
 # outputs data file for each plot
 with open(rname,'r') as sf_orig: 
 	with open(s_tmp+fext,'w+') as sf_tmp:

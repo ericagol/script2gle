@@ -2,10 +2,10 @@
 from s2gf import *
 
 check_lambdas  		= False
-check_getfargs 		= False
+check_getfargs 		= True
 check_arrayx   		= False
 check_getcolor 		= False
-check_closeellipsis = True
+check_closeellipsis = False
 
 # LAMBDA FUNCTIONS
 if check_lambdas:
@@ -20,16 +20,19 @@ if check_getfargs:
 	print '\n -- GETFARGS CHECK --'
 	s = "plot(x,y,'linewidth',1.5,'color', [0.1,0.1,0.9])"
 	test = (get_fargs(s) == ['x', 'y', "'linewidth'", '1.5', "'color'", '[0.1,0.1,0.9]'])
-	print 'PASS' if test else s+'\n>>>>'+get_fargs(s)
+	print 'PASS' if test else 'FAIL',1
 	s = "plot(x,y','linewidth',1.5)"
 	test = (get_fargs(s) == ['x', "y'", "'linewidth'",'1.5'])
-	print 'PASS' if test else s+'\n>>>>'+get_fargs(s)
+	print 'PASS' if test else 'FAIL',2
 	s = "marker('a string, ( ]', 'another!', y'*a')"
 	test = (get_fargs(s) == ["'a string, ( ]'", "'another!'", "y'*a'"])
-	print 'PASS' if test else s+'\n'+'>>>>'+get_fargs(s)
+	print 'PASS' if test else 'FAIL',3
 	s = "marker( [y',x',z], ' blah  ')"
-	(get_fargs(s) == ["[y',x',z]","' blah  '"])
-	print 'PASS' if test else s+'\n>>>>'+get_fargs(s)
+	test = (get_fargs(s) == ["[y',x',z]","' blah  '"])
+	print 'PASS' if test else 'FAIL',4
+	s = "function(x',y(1,:)','linewidth',2)"
+	test = (get_fargs(s) == ["x'","y(1,:)'","'linewidth'",'2'])
+	print 'PASS' if test else 'FAIL',5
 
 # -- ARRAY X (extract array) [SHOULD BE OBSOLETED, the array should be INTERPRETED by the script]
 if check_arrayx:

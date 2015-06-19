@@ -31,25 +31,33 @@ getnextargNL = lambda lst: lst.pop(0).strip('\'')
 # #	<in>:	string like plot(x,y,'linewidth',2.0)
 # # 	<out>:	list of arguments ['x','y','linewidth','2.0']
 def get_fargs(l):
-	cur_stack,arg_list,cur_arg = search(r'^\s*(?:\w+)\(\s*(.*)',l).group(1),[],''
-	#
+	cur_stack 		 = search(r'^\s*(?:\w+)\(\s*(.*)',l).group(1)
+	arg_list,cur_arg = [],''
+	prev_char        = ''
 	while cur_stack:
 		cur_char = cur_stack[0]
-		#
 		is_open  = cur_char in s2gd.keyopen
+		#
 		if is_open:
 			cur_arg 	    += cur_char
 			closed_s,rest,f  = find_delim(cur_stack[1:],cur_char,s2gd.keyclose[cur_char])
 			if f: raise s2gc.S2GSyntaxError(l,'<::found %s but could not close it::>'%cur_char)
-			cur_arg	        += closed_s+s2gd.keyclose[cur_char]
-			cur_stack 	     = rest
+			cur_arg	  += closed_s+s2gd.keyclose[cur_char]
+			cur_stack  = rest
 			continue
-		#
-		# out of isopen
-		if cur_char == ',': # splitting comma
+		# transpose/string ambiguity: it's a string opener if after a comma or a space otherwise transpose
+		if cur_char == '\'' and (match(r'[\s,\']',prev_char) or prev_char==''):
+			cur_arg += '' if match(r'\'',prev_char) else '\'' # merging 'son''s' to 'son's'
+			closed_s,rest,f = find_delim(cur_stack[1:],'\'','\'')
+			if f: raise s2gc.S2GSyntaxError(l,'<::found %s but could not close it::>'%cur_char)
+			cur_arg   += closed_s+'\''
+			cur_stack  = rest
+			prev_char  = ''
+			continue
+		# end of patterns: either split, break or get next char
+		elif cur_char == ',': # splitting comma
 			arg_list.append(cur_arg)
-			cur_arg   = ''
-			cur_stack = cur_stack[1:]
+			cur_arg,cur_stack,prev_char = '', cur_stack[1:].strip(),''
 			if not cur_stack:
 				raise s2gc.S2GSyntaxError(l,'<::misplaced comma::>')
 		elif cur_char == ')':
@@ -58,6 +66,7 @@ def get_fargs(l):
 		else:
 			cur_arg   += cur_char
 			cur_stack  = cur_stack[1:] # can throw syntax error (no end parens)
+			prev_char  = cur_char
 	#
 	return arg_list
 #
@@ -68,15 +77,13 @@ def find_delim(s,d_open,d_close):
 	cur_string  = ''
 	while cur_idx < len(s):
 		cur_char = s[cur_idx]
-		#
 		cur_idx += 1
 		#
-		if 		 cur_char == d_close: inside_open -= 1
-		elif 	 cur_char == d_open:  inside_open += 1
+		if 	 cur_char == d_close: inside_open -= 1
+		elif cur_char == d_open:  inside_open += 1
 		#
 		if not inside_open: break
-		else:
-			cur_string += cur_char
+		else: cur_string += cur_char
 	#
 	return cur_string,'' if cur_idx==len(s) else s[cur_idx:],inside_open
 #

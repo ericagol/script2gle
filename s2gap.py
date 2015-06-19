@@ -45,7 +45,7 @@ def parse_hold(curfig,line,**xargs):
 def parse_label(curfig,line,**xargs):
 	#
 	args = s2gf.get_fargs(line)
-	al   = args.pop(0)
+	al   = args.pop(0).strip('\'')
 	m0   = xargs['_labmarker']
 	if xargs['no_tex']:
 		curfig.axopt += '%stitle "%s"\n'%(m0,sub(r'\\','/',al))
@@ -100,13 +100,14 @@ def parse_legend(curfig,line,**xargs):
 	leg_stack = s2gf.get_fargs(line)
 	leg_c 	  = 0
 	while leg_stack:
-		leg_i_str = s2gf.getnextarg(leg_stack)
-		if   leg_i_str == 'location':
+		leg_i_str   = s2gf.getnextargNL(leg_stack)
+		leg_i_str_l = leg_i_str.lower()
+		if   leg_i_str_l == 'location':
 			leg_loc       = s2gf.getnextarg(leg_stack)
 			curfig.legpos = 'pos %s'%s2gd.leg_dict.get(leg_loc,'tr')
-		elif leg_i_str == 'boxoff':
+		elif leg_i_str_l == 'boxoff':
 			curfig.legopt+= ' nobox'
-		elif leg_i_str == 'offset':
+		elif leg_i_str_l == 'offset':
 			leg_off       = s2gf.array_x(leg_stack.pop(0))
 			curfig.legoff = ' offset '+' '.join(leg_off)
 		else:
@@ -116,7 +117,8 @@ def parse_legend(curfig,line,**xargs):
 				curfig.legend += 'text "%s" %s\n'%(leg_i_str,curfig.lstyles[leg_c])
 				leg_c         += 1
 			except IndexError, e:
-				raise s2gc.S2GSyntaxError(line,'<::found too many legends, did you forget a HOLD?::>')
+				s2gc.S2GSyntaxError(line,'<::found too many legends, did you forget a HOLD?::>')
+	return 0,'',''
 # -----------------------------------------------------------------------------
 def parse_set(curfig,line,**xargs):
 	#
@@ -168,7 +170,7 @@ def parse_set(curfig,line,**xargs):
 			#!<DEV>
 			pass
 	else:
-		raise s2gc.S2GSyntaxError(line,'<::unknown object handle in SET::>')
+		s2gc.S2GSyntaxError(line,'<::unknown object handle in SET::>')
 	#
 	# no new fig, no rest of line, no new stack
 	return 0, '',''
@@ -274,7 +276,7 @@ def parse_plot(curfig,line,**xargs):
 			opt_style['color'] = s2gd.md.get(l_4,'darkblue')
 		#
 		else:
-			raise S2GSyntaxError(line,'<::unknown option in plot::>')
+			s2gc.S2GSyntaxError(line,'<::unknown option in plot::>')
 	#
 	# name of data file
 	dfn = '%sdatplot%i_%i.dat'%(s2gd.tind,curfig.fignum,curfig.cntr)
@@ -305,7 +307,7 @@ def parse_plot(curfig,line,**xargs):
 	lb,mb  = bool(opt_style['lstyle']),bool(opt_style['marker'])
 	lbool  = lb or not mb
 	lsty   = opt_style['lstyle']+'0'*(not lb)
-	line   = ('lstyle '+lsty)*lbool
+	line   = ('lstyle '+lsty+' lwidth '+opt_style['lwidth'])*lbool
 	#fill   = 'f'*(opt_style['marker'] in ['circle','square','triangle'])*flags['mface']
 	marker = 'marker '*mb+opt_style['marker']
 	color  = 'color '+opt_style['color']
@@ -380,7 +382,7 @@ def parse_histogram(curfig,line,**xargs):
 		elif opt == 'nbins':
 			nbins = s2gf.getnextargNL(nbins)
 		else:
-			raise S2GSyntaxError(line,'<::unknown option in hist::>')
+			s2gc.S2GSyntaxError(line,'<::unknown option in hist::>')
 	#
 	# name of data files
 	dfn     = '%sdathist%i_%i.dat'%(s2gd.tind,curfig.fignum,curfig.cntr)
@@ -496,7 +498,7 @@ def parse_fillbetween(curfig,line,**xargs):
 			opt_style['color'],alpha,optsraw     = s2gf.get_color(optsraw)
 			opt_comp['alpha'] = opt_comp['alpha'] or alpha
 		else:
-			raise S2GSyntaxError(line,'<::unknown option in fill::>')
+			s2gc.S2GSyntaxError(line,'<::unknown option in fill::>')
 	#
 	# name of data file
 	dfn 	= '%sdatfill%i_%i.dat'%(s2gd.tind,curfig.fignum,curfig.cntr)

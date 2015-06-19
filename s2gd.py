@@ -59,7 +59,8 @@ script_dict_JL = {
 	'span' 		: '1:%s',
 	'exit' 		: 'exit()',
 	'comment' 	: '\#',
-	'caller'	: 'julia'
+	'caller'	: 'julia',
+	'scname'	: 'julia'
 }
 script_dict_R = {
 	'append'	: 'source',
@@ -80,7 +81,8 @@ script_dict_R = {
 	'span' 		: '1:%s',
 	'exit'		: 'q()',
 	'comment'	: '\#',
-	'caller'	: 'Rscript'
+	'caller'	: 'Rscript',
+	'scname'	: 'r'
 }
 script_dict_M = {
 	'append'	: 'run',
@@ -101,7 +103,8 @@ script_dict_M = {
 	'span'		: '1:%s',
 	'exit'		: 'exit()',
 	'comment' 	: '\%',
-	'caller'	: 'octave -q'
+	'caller'	: 'octave -q',
+	'scname'	: 'octave'
 }
 #
 # legend position conversion matlab/octave > gle
@@ -297,7 +300,6 @@ srd = svg2rgb_dict
 
 # PARSER SPECIFICS
 keyclose = {
-	'\''	: '\'',
 	'\"'	: '\"',
 	'['		: ']',
 	'('		: ')',
