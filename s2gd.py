@@ -54,7 +54,7 @@ script_dict_JL = {
 	'tifrow' 	: 'ifelse(size({0},1)>1,{0},{0}\')',
 	'autobins'  : '({0}<10)*{0}+(10<={0}<30)*10+(30<={0})*int(round(sqrt({0})))',
 	'EOL'		: '',
-	'cbind' 	: lambda s: '[%s]'%(','.join(s)),
+	'cbind' 	: lambda s: '[%s]'%(' '.join(s)),
 	'rbind'		: lambda s: '[%s]'%(';'.join(s)),
 	'span' 		: '1:%s',
 	'exit' 		: 'exit()',

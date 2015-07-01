@@ -23,7 +23,7 @@ printdict   = lambda d: 		 ''.join([' %s %s'%v if v[1] else '' for v in d.items(
 # -----------------------------------------------------------------------------
 def parse_append(curfig,line,**xargs):
 	scriptname = s2gf.strip_d(s2gf.getarg1(line),'\"')
-	print 'Appending script <', scriptname, '>...'
+	print '\nAppending script <', scriptname, '>...'
 	with open(scriptname,'r') as script:
 		# prepend the script to stack of lines
 		script_stack = script.readlines()+xargs['scriptstack']
@@ -160,6 +160,7 @@ def parse_set(curfig,line,**xargs):
 				curfig.axopt+='%saxis log\n'%arg[0]
 			elif match(r'[xy]lim$',arg):
 				al  = s2gf.safe_pop(args,arg)
+				al_ = s2gf.array_x(al)
  				curfig.axopt+='%saxis min %s max %s\n'%(arg[0],al_[0],al_[1])
  			elif match(r'fontsize$',arg):
  				fs  = s2gf.safe_pop(args,arg)
@@ -380,7 +381,7 @@ def parse_histogram(curfig,line,**xargs):
 		elif opt.isdigit():
 			nbins = opt
 		elif opt == 'nbins':
-			nbins = s2gf.getnextargNL(nbins)
+			nbins = s2gf.getnextargNL(optsraw)
 		else:
 			s2gc.S2GSyntaxError(line,'<::unknown option in hist::>')
 	#

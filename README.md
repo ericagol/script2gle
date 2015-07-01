@@ -29,7 +29,7 @@ running with `S2G` (\*) will generate the figure below:
 ![introtest.R](/examples/R/introtest_fig1_g.png)
 (\*:  `s2g introtest.R -png -tex`))
 
-**Note:** if this figure appears slightly pixellated, it is because it was rasterized into PNG so that it could be displayed on this page. To have it in vector quality: `s2g introtest.R -tex`
+**Note:** if this figure appears slightly pixellated, it is because it was rasterized into PNG so that it could be displayed on this page. To have it in vector quality: `s2g introtest.R -tex`.
 
 ### The workflow
 
@@ -72,7 +72,7 @@ Excellent instructions can be found on [their website](http://glx.sourceforge.ne
   2. from source with gcc (Apple LLVM 6.0) a small thing needs be done (patch found on [macports](https://trac.macports.org/attachment/ticket/41760/patch-hash-map.diff)):
     * comment line 54 of `PATH/src/gle/tokens/StringKeyHash.h`
     * uncomment line 57
-    * then run as usual: `make` (takes a bit of time) then `make install`.
+    * then run as usual: `make` (takes a few minutes) then `make install`.
 
 ### Installing S2G
 
@@ -92,7 +92,7 @@ It takes a few seconds to compile the figure since it must run `pdflatex` to gen
 s2g ex_basic.jl
 ```
 
-If you want a png output, use the option `-png` eg:
+If you want a png output, add the option `-png` eg:
 
 ```Bash
 s2g ex_basic.jl -tex -png
@@ -116,7 +116,7 @@ ylabel('$p(x)$')
 legend('$\propto\mathcal N(0,1)$','$\propto$ Laplace','Location','southeast')
 ```
 
-**Remark**: due to the similarity between Octave/Matlab and Julia syntax, the above example can be also be run with Julia, just name it `smalltest.jl` and let `s2g` do the rest.
+**Remark**: due to the similarity between Octave/Matlab and Julia syntax, the above example can actually also be run with Julia, just name it `smalltest.jl` and let `s2g` do the rest.
 
 in your terminal, in the same directory with `$PATHS2G` the path to the executable `s2g`,
 
