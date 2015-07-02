@@ -34,6 +34,7 @@ markers_dict = {
 	'set'				: s2gap.parse_set,
 	'axis'				: s2gap.parse_axis,
 	'legend'			: s2gap.parse_legend,
+#	's2gfor' 			: s2gap.parse_s2gfor,
 #	'bar'				: s2gap.parse_bar,
 #	r'(#s2g:)'		: s2gap.parse_s2g,
 	}

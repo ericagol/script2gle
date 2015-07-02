@@ -22,7 +22,7 @@ import s2gap
 devmode    = False # else-> cleanup temp folders
 no_gleplot = False # does not compile GLE files
 no_octave  = False # uses matlab instead of octave
-no_tex     = True  # for quick graph 
+no_tex     = True  # for quick graph
 png_out    = False # output in png instead of pdf
 png_resol  = ''
 if len(argv)>2:
@@ -45,7 +45,7 @@ if len(argv)>2:
 #
 rname  	   = argv[1]
 fname,fext = splitext(rname)    # full name with directory + file extension
-fext 	   = fext.lower() 		
+fext 	   = fext.lower()
 fname2 	   = fname.split('/')
 fname2 	   = fname2[-1] 		# only name of file
 gname  	   = fname+'.gle'
@@ -59,7 +59,7 @@ if fext   == '.jl':
 elif fext == '.r':
 	s2gd.csd = s2gd.script_dict_R
 elif fext == '.m':
-	s2gd.csd = s2gd.script_dict_M	
+	s2gd.csd = s2gd.script_dict_M
 	if no_octave:
 		s2gd.csd['caller'] = 'matlab -nodesktop -nosplash -noFigureWindows -r'
 		s2gd.csd['scname'] = 'matlab'
@@ -73,7 +73,7 @@ allmarkers = [m[0] for m in markers_dict.items()]
 # == MAIN BLOCK =================
 # create temp script file which
 # outputs data file for each plot
-with open(rname,'r') as sf_orig: 
+with open(rname,'r') as sf_orig:
 	with open(s_tmp+fext,'w+') as sf_tmp:
 		#
 		# script lines > stack of lines to process
@@ -87,7 +87,7 @@ with open(rname,'r') as sf_orig:
 			l,script_stack = s2gf.close_ellipsis(script_stack.pop(0),script_stack)
 			#
 			# ignore lines starting with (comment symbol, 'home','clear', ...)
-			if s2gf.match_start(s2gd.ignored,l): 
+			if s2gf.match_start(s2gd.ignored,l):
 				continue
 			#
 			# get marker if any ('figure','plot',...)
@@ -102,11 +102,10 @@ with open(rname,'r') as sf_orig:
 				continue
 			#
 			# parse line after marker (call appropriate s2gap function)
-			cf,l,ss = markers_dict[marker](
-						curfig,l,figlist=figlist,no_tex=no_tex,
-						script=sf_tmp,scriptstack=script_stack)
+			cf,l,ss = markers_dict[marker]( curfig,l,figlist=figlist,no_tex=no_tex,
+											script=sf_tmp,scriptstack=script_stack )
 			if cf: curfig = cf
-			if ss: script_stack = ss		
+			if ss: script_stack = ss
 		# --------------------------------
 		# if there remains a figure -> append it
 		if curfig.cntr:

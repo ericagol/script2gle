@@ -44,17 +44,23 @@ def parse_hold(curfig,line,**xargs):
 # -----------------------------------------------------------------------------
 def parse_label(curfig,line,**xargs):
 	#
-	args = s2gf.get_fargs(line)
-	al   = args.pop(0).strip('\'')
-	m0   = xargs['_labmarker']
-	if xargs['no_tex']:
-		curfig.axopt += '%stitle "%s"\n'%(m0,sub(r'\\','/',al))
-	else:
-		curfig.axopt += '%stitle "\\tex{%s}"\n'%(m0,sub('%','\%',al))
+	args  = s2gf.get_fargs(line)
+	al    = args.pop(0).strip('\'')
+	m0    = xargs['_labmarker']
+	fsize = 0
+	#
 	while args:
 		arg = s2gf.getnextarg(args)
 		if match(r'fontsize$',arg):
-			fsize = s2gf.safe_pop(args,arg)
+			fsize = s2gf.safe_pop(args,arg) # given in points
+			fsize = float(fsize)/28 		# conversion in cm
+	#
+	prestr = '\sethei{%f}'%fsize if fsize else ''
+	#
+	if xargs['no_tex']:
+		curfig.axopt += '%stitle "%s%s"\n'%(m0,prestr,sub(r'\\','/',al))
+	else:
+		curfig.axopt += '%stitle "%s\\tex{%s}"\n'%(m0,prestr,sub('%','\%',al))
 	#
 	# no new fig, no rest of line, no new stack
 	return 0,'',''
@@ -254,12 +260,13 @@ def parse_plot(curfig,line,**xargs):
 			# line (continuous, dashed, ...)
 			if   match(r':', l_1):
 				opt_style['lstyle'] = '2' 	# dotted
-			elif match(r'-', l_1) and match(r'\.',l_2):
-			 	opt_style['lstyle'] = '6'	# dashed-dotted
-			elif match(r'-', l_1) and match(r'-', l_2):
-			 	opt_style['lstyle'] = '3'	# dashed
 			elif match(r'-', l_1):
-				opt_style['lstyle'] = '0'	# standard
+				if match(r'\.',l_2):
+			 		opt_style['lstyle'] = '6'	# dashed-dotted
+				elif match(r'-', l_2):
+			 		opt_style['lstyle'] = '3'	# dashed
+				else:
+					opt_style['lstyle'] = '0'	# standard
 			# marker
 			if   match(r'\+',l_3):
 				opt_style['marker'] = 'plus'
@@ -273,6 +280,10 @@ def parse_plot(curfig,line,**xargs):
 				opt_style['marker'] = 'square'
 			elif match(r'\^',l_3):
 				opt_style['marker'] = 'triangle'
+			# check if only marker
+			if opt_style['marker'] and not match(r'-',l_1):
+				opt_style['lstyle'] = ''
+			#
 			# color
 			opt_style['color'] = s2gd.md.get(l_4,'darkblue')
 		#
@@ -301,14 +312,14 @@ def parse_plot(curfig,line,**xargs):
 	curfig.plot += 'data "%s" d%i\n'%(dfn,curfig.cntr)
 	# -- doing the plot
 	stem = 'impulses' if xargs.get('stem',False) else ''
-	curfig.plot += 'd%i line %s'%(curfig.cntr,stem)
+	sline = 'line' if opt_style['lstyle'] else ''
+	curfig.plot += 'd%i %s %s'%(curfig.cntr,sline,stem)
 	curfig.plot += printdict(opt_style)
 	#
 	# store lstyles for legend
 	lb,mb  = bool(opt_style['lstyle']),bool(opt_style['marker'])
 	lbool  = lb or not mb
-	lsty   = opt_style['lstyle']+'0'*(not lb)
-	line   = ('lstyle '+lsty+' lwidth '+opt_style['lwidth'])*lbool
+	line   = ('lstyle '+opt_style['lstyle']+' lwidth '+opt_style['lwidth'])*lbool
 	#fill   = 'f'*(opt_style['marker'] in ['circle','square','triangle'])*flags['mface']
 	marker = 'marker '*mb+opt_style['marker']
 	color  = 'color '+opt_style['color']

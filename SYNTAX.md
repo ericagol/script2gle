@@ -9,7 +9,7 @@ plot(x1,y1); hold on; plot(x2,y2);
 ```
 should be written in three lines
 
-* Do write things on multiple lines with `...` continuation if needed:
+* Writing things on multiple lines with `...` continuation is fine:
 ```Matlab
 plot(x1,y1, ...
 		'color','IndianRed',...
@@ -17,9 +17,8 @@ plot(x1,y1, ...
 ```
 
 
-
 ### Expression within s2g lines
-Expressions to be evaluated within S2G lines will be evaluated with the context-script and hence have to be valid within that script. For example in R this would be valid:
+Expressions to be evaluated within S2G display lines will be evaluated with the context-script and hence have to be valid within that script. For example in R this would be valid (the `ceiling(sqrt(N))` will be computed in R)
 ```R
 N = 500
 draw = rnorm(N)
@@ -27,11 +26,11 @@ hist(draw,'nbins',ceiling(sqrt(N)))
 ```
 
 ### Color options
-Colors implemented include the usual matlab short ones, RGB triplets, RGBA (with transparency) and X11/SVG names, syntax:
+Colors implemented include the usual Matlab short ones, RGB triplets, RGBA (with transparency) and X11/SVG names, syntax:
 * short Matlab `...,'r',...` with one of `rgbcmyk`
 * rgb triplet `...,'color',[0.8 0.7 0.5],...` (note: normalized RGB as in Matlab)
 * rgba triplet `...,'color',[0.8 0.7 0.5 0.4],...` will use 40% transparency
-* X11/SVG name `...,'color','cornflowerblue',...` 
+* X11/SVG name `...,'color','cornflowerblue',...`
 * X11/SVG name+transparency `...,'color','salmon','alpha',0.7,...`
 
 this will be referred to in the sequel as "colorspec"
@@ -41,7 +40,7 @@ this will be referred to in the sequel as "colorspec"
 ### Basic Syntax
 #### PLOT
 **Quick note for Matlab/Octave users**, noticeable differences:
-- multi graphs not accepted (e.g., `plot(x1,y1,x2,y2)`),
+- multi graphs not (yet) accepted (e.g., `plot(x1,y1,x2,y2)`),
 - x11 colors implemented (e.g., `...,'colors','cornflowerblue'`)
 
 Accepted format
@@ -49,7 +48,7 @@ Accepted format
 plot(x,...)
 plot(x,y,...)
 ```
-where `...` goes for options, accepted options are:
+where `...` goes for options, accepted options at the moment are:
 - **line style**: `-` (line), `:` (dotted), `-.` (dashed-dotted), `--` (dashed),
 - **marker symbols**: (after line style symbol if any) `+`, `o`, `*`, `x`, `s` (square), `^` (triangle),
 - **line style+color**: append a color to one of the line style symbol so for example `-r` will produce a red line, basic colors are `r`, `g`, `b`,`c` (cyan), `m` (magenta), `y`, `k` (black), `w`,
@@ -64,6 +63,19 @@ plot(x,y,'-+r','linewidth',0.5)
 plot(x,y,':','color','cornflowerblue')
 ```
 
+### TITLE/[XY]LABELS
+Valid format (identical for `[xy]label`):
+```
+title('some (tex) string',...)
+```
+where `...` goes for options, accepted option at the moment is:
+- **font size**: using the name `fontsize` followed by an integer (points unit i.e., the standard one).
+
+**Example**:
+```Matlab
+xlabel('time - [s]','fontsize',14)
+```
+
 #### LEGEND
 Accepted format
 ```Matlab
@@ -72,7 +84,7 @@ legend('str1','str2',...)
 where `...` goes for options, accepted options are:
 - **location** using the name `location` followed by combined words like `southeast`, `northwest` etc. Shorts are accepted eg: `nw`.
 - **box off** using the name `boxoff` will remove the legend bounding box.
-- **offset** using the name `offset` followed by an array `[a b]` will offset the legend from the graph box by the specified offset. 
+- **offset** using the name `offset` followed by an array `[a b]` will offset the legend from the graph box by the specified offset.
 
 #### HIST
 Accepted format
