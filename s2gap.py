@@ -23,7 +23,7 @@ printdict   = lambda d: 		 ''.join([' %s %s'%v if v[1] else '' for v in d.items(
 # -----------------------------------------------------------------------------
 def parse_append(curfig,line,**xargs):
 	scriptname = s2gf.strip_d(s2gf.getarg1(line),'\"')
-	print '\nAppending script <', scriptname, '>...'
+	print 'Appending script <', scriptname, '>...'
 	with open(scriptname,'r') as script:
 		# prepend the script to stack of lines
 		script_stack = script.readlines()+xargs['scriptstack']
@@ -44,23 +44,17 @@ def parse_hold(curfig,line,**xargs):
 # -----------------------------------------------------------------------------
 def parse_label(curfig,line,**xargs):
 	#
-	args  = s2gf.get_fargs(line)
-	al    = args.pop(0).strip('\'')
-	m0    = xargs['_labmarker']
-	fsize = 0
-	#
+	args = s2gf.get_fargs(line)
+	al   = args.pop(0)[1:-1]
+	m0   = xargs['_labmarker']
+	if xargs['no_tex']:
+		curfig.axopt += '%stitle "%s"\n'%(m0,sub(r'\\','/',al))
+	else:
+		curfig.axopt += '%stitle "\\tex{%s}"\n'%(m0,sub('%','\%',al))
 	while args:
 		arg = s2gf.getnextarg(args)
 		if match(r'fontsize$',arg):
-			fsize = s2gf.safe_pop(args,arg) # given in points
-			fsize = float(fsize)/28 		# conversion in cm
-	#
-	prestr = '\sethei{%f}'%fsize if fsize else ''
-	#
-	if xargs['no_tex']:
-		curfig.axopt += '%stitle "%s%s"\n'%(m0,prestr,sub(r'\\','/',al))
-	else:
-		curfig.axopt += '%stitle "%s\\tex{%s}"\n'%(m0,prestr,sub('%','\%',al))
+			fsize = s2gf.safe_pop(args,arg)
 	#
 	# no new fig, no rest of line, no new stack
 	return 0,'',''
@@ -106,14 +100,13 @@ def parse_legend(curfig,line,**xargs):
 	leg_stack = s2gf.get_fargs(line)
 	leg_c 	  = 0
 	while leg_stack:
-		leg_i_str   = s2gf.getnextargNL(leg_stack)
-		leg_i_str_l = leg_i_str.lower()
-		if   leg_i_str_l == 'location':
+		leg_i_str = s2gf.getnextarg(leg_stack)
+		if   leg_i_str == 'location':
 			leg_loc       = s2gf.getnextarg(leg_stack)
 			curfig.legpos = 'pos %s'%s2gd.leg_dict.get(leg_loc,'tr')
-		elif leg_i_str_l == 'boxoff':
+		elif leg_i_str == 'boxoff':
 			curfig.legopt+= ' nobox'
-		elif leg_i_str_l == 'offset':
+		elif leg_i_str == 'offset':
 			leg_off       = s2gf.array_x(leg_stack.pop(0))
 			curfig.legoff = ' offset '+' '.join(leg_off)
 		else:
@@ -124,7 +117,6 @@ def parse_legend(curfig,line,**xargs):
 				leg_c         += 1
 			except IndexError, e:
 				s2gc.S2GSyntaxError(line,'<::found too many legends, did you forget a HOLD?::>')
-	return 0,'',''
 # -----------------------------------------------------------------------------
 def parse_set(curfig,line,**xargs):
 	#
@@ -166,7 +158,6 @@ def parse_set(curfig,line,**xargs):
 				curfig.axopt+='%saxis log\n'%arg[0]
 			elif match(r'[xy]lim$',arg):
 				al  = s2gf.safe_pop(args,arg)
-				al_ = s2gf.array_x(al)
  				curfig.axopt+='%saxis min %s max %s\n'%(arg[0],al_[0],al_[1])
  			elif match(r'fontsize$',arg):
  				fs  = s2gf.safe_pop(args,arg)
@@ -260,13 +251,12 @@ def parse_plot(curfig,line,**xargs):
 			# line (continuous, dashed, ...)
 			if   match(r':', l_1):
 				opt_style['lstyle'] = '2' 	# dotted
+			elif match(r'-', l_1) and match(r'\.',l_2):
+			 	opt_style['lstyle'] = '6'	# dashed-dotted
+			elif match(r'-', l_1) and match(r'-', l_2):
+			 	opt_style['lstyle'] = '3'	# dashed
 			elif match(r'-', l_1):
-				if match(r'\.',l_2):
-			 		opt_style['lstyle'] = '6'	# dashed-dotted
-				elif match(r'-', l_2):
-			 		opt_style['lstyle'] = '3'	# dashed
-				else:
-					opt_style['lstyle'] = '0'	# standard
+				opt_style['lstyle'] = '0'	# standard
 			# marker
 			if   match(r'\+',l_3):
 				opt_style['marker'] = 'plus'
@@ -280,10 +270,6 @@ def parse_plot(curfig,line,**xargs):
 				opt_style['marker'] = 'square'
 			elif match(r'\^',l_3):
 				opt_style['marker'] = 'triangle'
-			# check if only marker
-			if opt_style['marker'] and not match(r'-',l_1):
-				opt_style['lstyle'] = ''
-			#
 			# color
 			opt_style['color'] = s2gd.md.get(l_4,'darkblue')
 		#
@@ -312,14 +298,14 @@ def parse_plot(curfig,line,**xargs):
 	curfig.plot += 'data "%s" d%i\n'%(dfn,curfig.cntr)
 	# -- doing the plot
 	stem = 'impulses' if xargs.get('stem',False) else ''
-	sline = 'line' if opt_style['lstyle'] else ''
-	curfig.plot += 'd%i %s %s'%(curfig.cntr,sline,stem)
+	curfig.plot += 'd%i line %s'%(curfig.cntr,stem)
 	curfig.plot += printdict(opt_style)
 	#
 	# store lstyles for legend
 	lb,mb  = bool(opt_style['lstyle']),bool(opt_style['marker'])
 	lbool  = lb or not mb
-	line   = ('lstyle '+opt_style['lstyle']+' lwidth '+opt_style['lwidth'])*lbool
+	lsty   = opt_style['lstyle']+'0'*(not lb)
+	line   = ('lstyle '+lsty)*lbool
 	#fill   = 'f'*(opt_style['marker'] in ['circle','square','triangle'])*flags['mface']
 	marker = 'marker '*mb+opt_style['marker']
 	color  = 'color '+opt_style['color']
@@ -392,7 +378,7 @@ def parse_histogram(curfig,line,**xargs):
 		elif opt.isdigit():
 			nbins = opt
 		elif opt == 'nbins':
-			nbins = s2gf.getnextargNL(optsraw)
+			nbins = s2gf.getnextargNL(nbins)
 		else:
 			s2gc.S2GSyntaxError(line,'<::unknown option in hist::>')
 	#
@@ -462,9 +448,62 @@ def parse_bar(curfig,line,**xargs):
 	# syntax: 	bar(x,...)
 	#			bar(x,y,...)
 	args = s2gf.get_fargs(line)
+	x    = args[0]
+	if len(args)>1:
+		# bar(x,...)
+		if args[1].strip()[0] == "'":
+			# bar(x, '...')
+			y,optsraw = '', args[1:]
+		else:
+			# bar(x,y,...)
+			y,optsraw = args[1], '' if len(args)<3 else args[2:]
+	else:
+		# bar(x)
+		y,optsraw = '', ''
+	# treat options
+	# > default dictionaries
+	horiz = False
+	opt_style = {
+		'color'	: 'white',		# default edge color
+		'fill'	: 'salmon', 	# default face color
+		'width' : 0.5,			# default bar width
+	}
+	while optsraw:
+		opt = s2gf.getnextarg(optsraw)
+		# width
+		if opt == 'width':
+			opt_style['width'] = s2gf.getnextarg(optsraw)
+		# elif opt in ['horiz','horizontal']:
+		# 	horiz = True
 	#
-	# DEV DEV DEV DEV
-	# DEV DEV DEV DEV
+	# name of data files
+	dfn     = '%sdatbar%i_%i.dat'%(s2gd.tind,curfig.fignum,curfig.cntr)
+	dfn_sup = sub('bar','bar_sup',dfn)
+	#
+	# <ADD TO SCRIPT FILE>
+	script  = ''
+	if y:
+		script += addscrvar('x__',x)
+		script += addscrvar('y__',y)
+	else:
+		script += addscrvar('y__',x)
+		script += addscrvar('x__',s2gd.csd['span']%s2gd.csd['numel']%'y__')
+	vx,vy   = s2gd.csd['vec']%'x__', s2gd.csd['vec']%'y__'
+	script += addscrvar('c__',s2gd.csd['cbind']([vx,vy]))
+	script += addscrwrite('c__',dfn)
+	# > write script
+	xargs['script'].write(script)
+	#
+	# <ADD TO GLE FILE>
+	# -- reading actual data
+	curfig.plot += 'data "%s" d%i\n'%(dfn,curfig.cntr)
+	# -- doing the bar chart
+	curfig.plot += 'bar d%i'%curfig.cntr
+	# -- add horiz keyword if needed
+	curfig.plot += horiz*' horiz '
+	# > write style options
+	curfig.plot += printdict(opt_style)
+	# --
 	#
 	# no newfig, no rest of line, no new stack
 	return 0,'',''

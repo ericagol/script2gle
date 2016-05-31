@@ -34,8 +34,7 @@ markers_dict = {
 	'set'				: s2gap.parse_set,
 	'axis'				: s2gap.parse_axis,
 	'legend'			: s2gap.parse_legend,
-#	's2gfor' 			: s2gap.parse_s2gfor,
-#	'bar'				: s2gap.parse_bar,
+	'bar'				: s2gap.parse_bar,
 #	r'(#s2g:)'		: s2gap.parse_s2g,
 	}
 #
@@ -60,8 +59,7 @@ script_dict_JL = {
 	'span' 		: '1:%s',
 	'exit' 		: 'exit()',
 	'comment' 	: '\#',
-	'caller'	: 'julia',
-	'scname'	: 'julia'
+	'caller'	: 'julia'
 }
 script_dict_R = {
 	'append'	: 'source',
@@ -82,8 +80,7 @@ script_dict_R = {
 	'span' 		: '1:%s',
 	'exit'		: 'q()',
 	'comment'	: '\#',
-	'caller'	: 'Rscript',
-	'scname'	: 'r'
+	'caller'	: 'Rscript'
 }
 script_dict_M = {
 	'append'	: 'run',
@@ -104,8 +101,7 @@ script_dict_M = {
 	'span'		: '1:%s',
 	'exit'		: 'exit()',
 	'comment' 	: '\%',
-	'caller'	: 'octave -q',
-	'scname'	: 'octave'
+	'caller'	: 'octave -q'
 }
 #
 # legend position conversion matlab/octave > gle
@@ -301,6 +297,7 @@ srd = svg2rgb_dict
 
 # PARSER SPECIFICS
 keyclose = {
+	'\''	: '\'',
 	'\"'	: '\"',
 	'['		: ']',
 	'('		: ')',
